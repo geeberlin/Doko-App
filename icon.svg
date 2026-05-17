@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <rect width="512" height="512" rx="114" fill="#1C1C1E"/>
+  <rect x="72" y="56" width="368" height="400" rx="44" fill="#FFFFFF"/>
+  <text x="256" y="340" text-anchor="middle" font-family="-apple-system,Arial,sans-serif" font-size="300" font-weight="900" fill="#FF3B30">Q</text>
+  <text x="256" y="448" text-anchor="middle" font-family="Georgia,serif" font-size="110" fill="#FF3B30">♥</text>
+</svg>

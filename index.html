@@ -1,0 +1,1653 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Doko · Kasse</title>
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Doko">
+<meta name="theme-color" content="#1C1C1E">
+<link rel="manifest" href="manifest.json">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+:root{
+  --bg:#F2F2F7;--surface:#FFFFFF;--surface2:#F2F2F7;--surface3:#E5E5EA;
+  --primary:#007AFF;--label:#000;--label2:rgba(60,60,67,.6);--label3:rgba(60,60,67,.3);
+  --sep:rgba(60,60,67,.18);--red:#FF3B30;--green:#34C759;--orange:#FF9500;
+  --r:12px;--r-sm:8px;--sh:0 1px 3px rgba(0,0,0,.08),0 1px 2px rgba(0,0,0,.05);
+}
+@media(prefers-color-scheme:dark){:root{
+  --bg:#000;--surface:#1C1C1E;--surface2:#2C2C2E;--surface3:#3A3A3C;
+  --label:#fff;--label2:rgba(235,235,245,.6);--label3:rgba(235,235,245,.25);
+  --sep:rgba(84,84,88,.55);
+}}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(--label);min-height:100dvh;-webkit-font-smoothing:antialiased}
+#app{max-width:480px;margin:0 auto;min-height:100dvh;position:relative}
+
+/* NAV */
+.nav{position:sticky;top:0;z-index:90;background:rgba(242,242,247,.85);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border-bottom:1px solid var(--sep);padding:12px 16px;padding-top:calc(12px + env(safe-area-inset-top));display:flex;align-items:center;gap:8px}
+@media(prefers-color-scheme:dark){.nav{background:rgba(28,28,30,.88)}}
+.nav h1{flex:1;font-size:17px;font-weight:600;text-align:center}
+.nav-back{font-size:15px;font-weight:500;color:var(--primary);cursor:pointer;padding:4px 0;white-space:nowrap}
+.nav-action{font-size:15px;font-weight:600;color:var(--primary);cursor:pointer;white-space:nowrap}
+
+/* CARDS */
+.card{background:var(--surface);border-radius:var(--r);box-shadow:var(--sh);overflow:hidden}
+.section{margin:0 16px 16px}
+.section-label{font-size:12.5px;font-weight:600;color:var(--label2);text-transform:uppercase;letter-spacing:.06em;padding:0 4px;margin-bottom:8px}
+.row{display:flex;align-items:center;padding:13px 16px;gap:12px;border-bottom:1px solid var(--sep)}
+.row:last-child{border-bottom:none}
+.row-label{flex:1;font-size:17px}
+.row-sub{font-size:13px;color:var(--label2);margin-top:1px}
+.row-value{font-size:17px;color:var(--label2)}
+.row-chevron{color:var(--label3);font-size:15px}
+
+/* BUTTONS */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:13px 20px;border-radius:999px;font-size:17px;font-weight:600;border:none;cursor:pointer;transition:opacity .12s,transform .1s;text-decoration:none;letter-spacing:-.01em}
+.btn:active{opacity:.72;transform:scale(.96)}
+.btn-primary{background:var(--primary);color:#fff}
+.btn-secondary{background:var(--surface2);color:var(--label)}
+.btn-danger{background:var(--red);color:#fff}
+.btn-sm{padding:8px 16px;font-size:15px;border-radius:999px}
+.btn-full{width:100%}
+.btn:disabled{opacity:.38;pointer-events:none}
+
+/* SCORE DISPLAY */
+.pts{font-size:22px;font-weight:700;font-variant-numeric:tabular-nums;letter-spacing:-.5px}
+.pts.pos{color:var(--green)}.pts.neg{color:var(--red)}.pts.zero{color:var(--label2)}
+
+/* SCOREBOARD */
+.scoreboard{display:grid;grid-template-columns:repeat(4,1fr);gap:4px;padding:16px}
+.sb-player{display:flex;flex-direction:column;align-items:center;gap:5px}
+.sb-name{font-size:11px;font-weight:700;color:var(--label2);text-transform:uppercase;letter-spacing:.06em}
+.sb-pts{font-size:26px;font-weight:800;font-variant-numeric:tabular-nums;letter-spacing:-1px}
+
+/* BOCK BADGE */
+.bock-chip{display:inline-flex;align-items:center;gap:5px;background:var(--orange);color:#fff;border-radius:999px;padding:5px 14px;font-size:13px;font-weight:700}
+.bock-chip.dbl{background:var(--red)}
+
+/* TABLE VIZ */
+.table-wrap{position:relative;width:220px;height:220px;margin:8px auto}
+.table-felt{position:absolute;inset:40px;border-radius:50%;background:var(--surface2);border:2px solid var(--sep)}
+.seat{position:absolute;display:flex;flex-direction:column;align-items:center;gap:3px;width:70px}
+.seat.S{bottom:0;left:50%;transform:translateX(-50%)}
+.seat.W{left:0;top:50%;transform:translateY(-50%)}
+.seat.N{top:0;left:50%;transform:translateX(-50%)}
+.seat.O{right:0;top:50%;transform:translateY(-50%)}
+.seat-chip{border-radius:999px;padding:5px 12px;font-size:12px;font-weight:700;background:var(--surface3);color:var(--label)}
+.seat-chip.dealer{background:var(--orange);color:#fff}
+.seat-label{font-size:10px;color:var(--label2);font-weight:600}
+
+/* SHEET */
+.overlay{display:none;position:fixed;inset:0;z-index:200;background:rgba(0,0,0,.45);align-items:flex-end}
+.overlay.open{display:flex}
+.sheet{background:var(--surface);border-radius:20px 20px 0 0;width:100%;max-height:94dvh;overflow-y:auto;padding-bottom:calc(28px + env(safe-area-inset-bottom))}
+.sheet-handle{width:36px;height:4px;background:var(--sep);border-radius:2px;margin:12px auto 2px}
+.sheet-title{font-size:20px;font-weight:700;padding:8px 20px 20px}
+
+/* FORM */
+.f-section{padding:0 20px 20px}
+.f-label{font-size:12.5px;font-weight:700;color:var(--label2);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px}
+.f-hint{font-size:13px;color:var(--label2);margin-bottom:12px;line-height:1.4}
+
+/* SEGMENTED */
+.seg{display:flex;background:var(--surface2);border-radius:var(--r-sm);padding:2px;gap:2px}
+.seg-btn{flex:1;padding:8px 6px;border:none;background:transparent;border-radius:6px;font-size:14px;font-weight:500;color:var(--label2);cursor:pointer;transition:all .15s;text-align:center}
+.seg-btn.on{background:var(--surface);color:var(--label);font-weight:700;box-shadow:var(--sh)}
+
+/* PLAYER GRID */
+.p-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
+.p-btn{padding:14px 8px;border:2px solid var(--sep);border-radius:var(--r-sm);background:var(--surface);color:var(--label);font-size:15px;font-weight:700;cursor:pointer;transition:all .15s;text-align:center;line-height:1.3}
+.p-btn:active{transform:scale(.96)}
+.p-btn.re{border-color:var(--primary);background:rgba(0,122,255,.1);color:var(--primary)}
+.p-btn.ko{border-color:var(--red);background:rgba(255,59,48,.1);color:var(--red)}
+.p-btn.sel-neg{border-color:var(--red);background:rgba(255,59,48,.1);color:var(--red)}
+
+/* NUMBER INPUT */
+.num-input{width:100%;padding:14px;border:1.5px solid var(--sep);border-radius:var(--r-sm);font-size:32px;font-weight:800;text-align:center;color:var(--label);background:var(--surface);font-variant-numeric:tabular-nums}
+.num-input:focus{outline:none;border-color:var(--primary)}
+.quick-btns{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+
+/* TOGGLE */
+.t-row{display:flex;align-items:center;padding:12px 0;border-bottom:1px solid var(--sep);gap:12px}
+.t-row:last-child{border-bottom:none}
+.t-lbl{flex:1;font-size:17px;line-height:1.3}
+.toggle{position:relative;width:51px;height:31px;flex-shrink:0;cursor:pointer}
+.toggle input{opacity:0;width:0;height:0;position:absolute}
+.t-track{position:absolute;inset:0;border-radius:999px;background:var(--sep);transition:background .2s;cursor:pointer}
+.toggle input:checked+.t-track{background:var(--green)}
+.t-track::after{content:'';position:absolute;top:2px;left:2px;width:27px;height:27px;border-radius:50%;background:#fff;box-shadow:0 2px 4px rgba(0,0,0,.28);transition:transform .2s}
+.toggle input:checked+.t-track::after{transform:translateX(20px)}
+
+/* SPECIAL POINTS */
+.sp-row{display:flex;align-items:center;padding:11px 0;border-bottom:1px solid var(--sep);gap:10px}
+.sp-row:last-child{border-bottom:none}
+.sp-name{flex:1;font-size:16px}
+.sp-btns{display:flex;gap:5px}
+.sp-btn{padding:6px 12px;border:1.5px solid var(--sep);border-radius:999px;background:transparent;font-size:13px;font-weight:600;cursor:pointer;color:var(--label2);transition:all .12s}
+.sp-btn.re{border-color:var(--primary);background:rgba(0,122,255,.1);color:var(--primary)}
+.sp-btn.ko{border-color:var(--red);background:rgba(255,59,48,.1);color:var(--red)}
+
+/* PREVIEW */
+.preview{background:var(--surface2);border-radius:var(--r);padding:14px 16px}
+.preview-row{display:flex;align-items:center;padding:5px 0}
+.preview-name{flex:1;font-size:16px;font-weight:600}
+.preview-pts{font-size:22px;font-weight:800;font-variant-numeric:tabular-nums;min-width:60px;text-align:right}
+
+/* GAME LIST ITEM */
+.g-wrap{position:relative;overflow:hidden}
+.g-wrap:last-child .g-item{border-bottom:none}
+.g-item{display:flex;padding:11px 16px;gap:10px;align-items:center;border-bottom:1px solid var(--sep);background:var(--surface);will-change:transform;position:relative;z-index:1}
+.g-del{position:absolute;right:0;top:0;bottom:0;width:80px;background:var(--red);color:#fff;border:none;font-size:13px;font-weight:700;cursor:pointer;letter-spacing:.02em;z-index:0}
+.g-num{width:26px;height:26px;border-radius:50%;background:var(--surface2);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:var(--label2);flex-shrink:0}
+.g-info{flex:1;min-width:0}
+.g-type{font-size:15px;font-weight:600}
+.g-sub{font-size:12px;color:var(--label2);margin-top:1px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.g-badge{font-size:13px;font-weight:700;text-align:right;flex-shrink:0}
+
+/* FAB */
+.fab{position:fixed;bottom:calc(22px + env(safe-area-inset-bottom));right:max(20px,calc((100vw - 480px)/2 + 20px));width:56px;height:56px;border-radius:50%;background:var(--primary);color:#fff;border:none;cursor:pointer;font-size:30px;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 18px rgba(0,122,255,.42);transition:transform .1s,box-shadow .1s;z-index:100;line-height:1}
+.fab:active{transform:scale(.9);box-shadow:0 2px 8px rgba(0,122,255,.35)}
+
+/* MISC */
+.empty{text-align:center;padding:56px 20px;color:var(--label2)}
+.empty-icon{font-size:52px;margin-bottom:12px}
+.mt8{margin-top:8px}.mt12{margin-top:12px}.mt16{margin-top:16px}.mt20{margin-top:20px}
+.pt16{padding-top:16px}
+.kasse-amt{font-size:54px;font-weight:800;letter-spacing:-2px;font-variant-numeric:tabular-nums}
+.pill{display:inline-flex;align-items:center;padding:3px 10px;border-radius:999px;font-size:12px;font-weight:700}
+.pill-green{background:rgba(52,199,89,.15);color:var(--green)}
+.pill-red{background:rgba(255,59,48,.15);color:var(--red)}
+.pill-orange{background:rgba(255,149,0,.15);color:var(--orange)}
+
+/* SPIELTYP GRID */
+.st-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+.st-btn{padding:10px 6px;border:1.5px solid var(--sep);border-radius:var(--r-sm);background:var(--surface);color:var(--label);font-size:12.5px;font-weight:600;cursor:pointer;text-align:center;transition:all .15s;line-height:1.3}
+.st-btn.on{border-color:var(--primary);background:rgba(0,122,255,.1);color:var(--primary)}
+.st-btn.special{border-color:var(--red)}
+.st-btn.special.on{border-color:var(--red);background:rgba(255,59,48,.1);color:var(--red)}
+
+/* DIVIDER */
+.divider{height:1px;background:var(--sep);margin:0}
+</style>
+</head>
+<body>
+<div id="app"></div>
+
+<script>
+'use strict';
+
+// ═══════════════════════════════════════════════
+// DATA MODEL
+// ═══════════════════════════════════════════════
+
+const PL = {
+  gee:   {id:'gee',   name:'Gerald',    s:'Gee'},
+  chrizz:{id:'chrizz',name:'Christian', s:'Chrizz'},
+  freed: {id:'freed', name:'Andreas',   s:'Free-D'},
+  mjd:   {id:'mjd',   name:'Michael',   s:'MJD'},
+};
+const PIDS = ['gee','chrizz','freed','mjd'];
+
+const ST = {
+  normal:     {l:'Normalspiel',   solo:false, special:false},
+  hochzeit:   {l:'Hochzeit',      solo:false, special:false},
+  armut:      {l:'Armut',         solo:false, special:false},
+  solo_buben: {l:'Bubensolo',     solo:true,  special:false},
+  solo_damen: {l:'Damensolo',     solo:true,  special:false},
+  solo_farbe: {l:'Farbensolo',    solo:true,  special:false},
+  fleischlos: {l:'Fleischloser',  solo:true,  special:false},
+  falsch:     {l:'Falsch bedient',solo:false, special:true},
+  abbruch:    {l:'Spielabbruch',  solo:false, special:true},
+};
+const SOLOS = ['solo_buben','solo_damen','solo_farbe','fleischlos'];
+
+// Which Sonderpunkte are available per Spieltyp
+const SP_AVAIL = {
+  normal:     {fuchs:true,  karlchen:true,  dk:true},
+  hochzeit:   {fuchs:true,  karlchen:true,  dk:true},
+  armut:      {fuchs:true,  karlchen:true,  dk:true},
+  solo_buben: {fuchs:false, karlchen:false, dk:true},
+  solo_damen: {fuchs:true,  karlchen:false, dk:true},
+  solo_farbe: {fuchs:true,  karlchen:false, dk:true},
+  fleischlos: {fuchs:false, karlchen:false, dk:true},
+  falsch:     {fuchs:false, karlchen:false, dk:false},
+  abbruch:    {fuchs:false, karlchen:false, dk:false},
+};
+
+// ═══════════════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════════════
+
+let S = (() => {
+  try { const r = localStorage.getItem('doko-v3'); if(r) return JSON.parse(r); } catch(e){}
+  return {kasseSaldo:0, sessions:[], currentId:null};
+})();
+
+const save = () => localStorage.setItem('doko-v3', JSON.stringify(S));
+const getCur = () => S.sessions.find(s => s.id === S.currentId) || null;
+
+// ═══════════════════════════════════════════════
+// SCORING ENGINE
+// ═══════════════════════════════════════════════
+
+function calcScores(g) {
+  // Falsch bedient
+  if (g.spieltyp === 'falsch') {
+    const sc = {};
+    PIDS.forEach(p => sc[p] = g.falschBediener === p ? -21 : 7);
+    return sc;
+  }
+  // Spielabbruch
+  if (g.spieltyp === 'abbruch') {
+    const sc = {}; PIDS.forEach(p => sc[p] = 0); return sc;
+  }
+
+  const isSolo = SOLOS.includes(g.spieltyp);
+  const {reTeam, kontraTeam, winner, verliererAugen, ansagen, sonderpunkte, bockMultiplier} = g;
+
+  // Base points
+  let pts = 1;
+  if (verliererAugen < 90) pts++;
+  if (verliererAugen < 60) pts++;
+  if (verliererAugen < 30) pts++;
+  if (verliererAugen === 0) pts++;    // Schwarz (zusätzlich zu <30)
+
+  // Ansagen
+  if (ansagen.re) pts++;
+  if (ansagen.kontra) pts++;
+
+  // Winner's own extra Ansagen
+  const ws = winner; // 'Re' or 'Kontra'
+  const ls = ws === 'Re' ? 'Kontra' : 'Re';
+  ['keine90','keine60','keine30','schwarz'].forEach(a => {
+    if (ansagen[a + ws]) pts++;   // Winner announced & achieved
+    if (ansagen[a + ls]) pts++;   // Loser announced but still lost → winner gets point
+  });
+
+  // Bock
+  pts *= bockMultiplier;
+
+  // Distribute — bilateral: each player settles against each opponent individually
+  const sc = {};
+  [...reTeam, ...kontraTeam].forEach(p => sc[p] = 0);
+  const winTeam = ws === 'Re' ? reTeam : kontraTeam;
+  const loseTeam = ws === 'Re' ? kontraTeam : reTeam;
+
+  if (isSolo) {
+    // Solo (1 vs 3): solo player settles against 3 opponents
+    const solo = reTeam[0];
+    if (ws === 'Re') {
+      sc[solo] = pts * kontraTeam.length;   // +3×pts
+      kontraTeam.forEach(p => sc[p] = -pts); // each pays 1×pts
+    } else {
+      sc[solo] = -pts * kontraTeam.length;
+      kontraTeam.forEach(p => sc[p] = pts);
+    }
+  } else {
+    // Normal (2 vs 2): each winner settles against each loser → ×2 per player
+    winTeam.forEach(p => sc[p] = pts * loseTeam.length);
+    loseTeam.forEach(p => sc[p] = -pts * winTeam.length);
+  }
+
+  // Sonderpunkte (bilateral too)
+  const sp = g.sp || {};
+  const applySpPts = (countRe, countKo) => {
+    const v = bockMultiplier;
+    if (isSolo) {
+      const solo = reTeam[0];
+      sc[solo] += (countRe - countKo) * v * kontraTeam.length;
+      kontraTeam.forEach(p => sc[p] += (countKo - countRe) * v);
+    } else {
+      reTeam.forEach(p => sc[p] += (countRe - countKo) * v * kontraTeam.length);
+      kontraTeam.forEach(p => sc[p] += (countKo - countRe) * v * reTeam.length);
+    }
+  };
+  if (sp.fuchsRe || sp.fuchsKo) applySpPts(sp.fuchsRe||0, sp.fuchsKo||0);
+  if (sp.karlchen) applySpPts(sp.karlchen==='Re'?1:0, sp.karlchen==='Kontra'?1:0);
+  if (sp.dkRe || sp.dkKo) applySpPts(sp.dkRe||0, sp.dkKo||0);
+
+  return sc;
+}
+
+function calcBreakdown(g) {
+  if (g.spieltyp === 'falsch') return {lines:[{label:'Falsch bedient',pts:null}], basePts:null, bockMultiplier:1, isSolo:false};
+  if (g.spieltyp === 'abbruch') return {lines:[{label:'Spielabbruch — 0 Punkte',pts:null}], basePts:null, bockMultiplier:1, isSolo:false};
+
+  const isSolo = SOLOS.includes(g.spieltyp);
+  const {verliererAugen, ansagen, bockMultiplier, winner} = g;
+  const ws = winner;
+  const ls = ws === 'Re' ? 'Kontra' : 'Re';
+
+  const lines = [];
+  let pts = 1;
+  lines.push({label:'Gewonnen', pts:1});
+
+  if (verliererAugen < 90) { pts++; lines.push({label:`Verlierer < 90 (${verliererAugen} Augen)`, pts:1}); }
+  if (verliererAugen < 60) { pts++; lines.push({label:'Verlierer < 60', pts:1}); }
+  if (verliererAugen < 30) { pts++; lines.push({label:'Verlierer < 30', pts:1}); }
+  if (verliererAugen === 0) { pts++; lines.push({label:'Schwarz (0 Augen)', pts:1}); }
+
+  if (ansagen.re)     { pts++; lines.push({label:'Re angesagt', pts:1}); }
+  if (ansagen.kontra) { pts++; lines.push({label:'Kontra angesagt', pts:1}); }
+
+  const annLabels = {keine90:'Keine 90', keine60:'Keine 60', keine30:'Keine 30', schwarz:'Schwarz'};
+  ['keine90','keine60','keine30','schwarz'].forEach(a => {
+    if (ansagen[a+ws]) { pts++; lines.push({label:`${annLabels[a]} ${ws} (angesagt & erfüllt)`, pts:1}); }
+    if (ansagen[a+ls]) { pts++; lines.push({label:`${annLabels[a]} ${ls} (angesagt, nicht erfüllt)`, pts:1}); }
+  });
+
+  return {lines, basePts: pts, bockMultiplier, isSolo};
+}
+
+function sessionTotals(ses) {
+  const t = {}; PIDS.forEach(p => t[p] = 0);
+  (ses.games || []).forEach(g => Object.entries(g.scores).forEach(([p,v]) => t[p] = (t[p]||0)+v));
+  return t;
+}
+
+function kasseBeitrag(totals, soloStrafe) {
+  const max = Math.max(...PIDS.map(p => totals[p] || 0));
+  const b = {};
+  PIDS.forEach(p => {
+    let e = Math.round(Math.min(Math.max(max - (totals[p] || 0), 0) / 10, 10));
+    if (soloStrafe?.[p]) e += 5;
+    b[p] = e;
+  });
+  return b;
+}
+
+// ═══════════════════════════════════════════════
+// BOCK MANAGEMENT
+// ═══════════════════════════════════════════════
+
+function nextBockMult(ses) {
+  const idx = ses.games.length;
+  if (!ses.bockQ) return 1;
+  const count = ses.bockQ.filter(i => i === idx).length;
+  if (count >= 2) return 4; // Doppelbock
+  if (count === 1) return 2; // Bock
+  return 1;
+}
+
+function scheduleBock(ses, delay) {
+  if (!ses.bockQ) ses.bockQ = [];
+  const target = ses.games.length + (delay || 0);
+  ses.bockQ.push(target);
+}
+
+function checkBockTriggers(ses, game) {
+  // 1. Zero-sum game (net |points| = 0)
+  const absSum = Object.values(game.scores).reduce((a,b) => a + Math.abs(b), 0);
+  if (absSum === 0) scheduleBock(ses, 0);
+
+  // 2. Spielabbruch
+  if (game.spieltyp === 'abbruch') scheduleBock(ses, 0);
+
+  // 3. Spread ≥ 120 at end of Runde (every 4 games)
+  if (ses.games.length % 4 === 0) {
+    const t = sessionTotals(ses);
+    const vals = PIDS.map(p => t[p]);
+    const spread = Math.max(...vals) - Math.min(...vals);
+    if (spread >= 120) {
+      // Delay by 1 to avoid consecutive Bock
+      const nextIdx = ses.games.length;
+      const alreadyNext = ses.bockQ && ses.bockQ.includes(nextIdx);
+      scheduleBock(ses, alreadyNext ? 1 : 0);
+    }
+  }
+}
+
+function recalcBockQ(ses) {
+  const tempSes = {games: [], bockQ: []};
+  ses.games.forEach(g => {
+    tempSes.games.push(g);
+    checkBockTriggers(tempSes, g);
+  });
+  ses.bockQ = tempSes.bockQ;
+}
+
+function recalcDealerIdx(ses) {
+  ses.dealerIdx = 0;
+  ses.games.forEach(g => {
+    if (!SOLOS.includes(g.spieltyp)) ses.dealerIdx = (ses.dealerIdx + 1) % 4;
+  });
+}
+
+function deleteGame(gameId) {
+  if (!confirm('Dieses Spiel wirklich löschen?')) return;
+  const ses = getCur();
+  ses.games = ses.games.filter(g => g.id !== gameId);
+  ses.games.forEach((g, i) => g.index = i);
+  recalcBockQ(ses);
+  recalcDealerIdx(ses);
+  save(); render();
+}
+
+const PIN_HASH = 'b4850919f34df57631491784de40f7fb67b417672ca8e72525278d4bc256ba76';
+async function deleteSession(sesId) {
+  const code = prompt('Sicherheitscode eingeben:');
+  if (code === null) return;
+  const h = await sha256(code.trim());
+  if (h !== PIN_HASH) { alert('Falscher Code.'); return; }
+  const ses = S.sessions.find(s => s.id === sesId);
+  if (ses?.settled && ses.kasseBeitrag) {
+    S.kasseSaldo -= Object.values(ses.kasseBeitrag).reduce((a,b)=>a+b,0);
+  }
+  if (S.currentId === sesId) S.currentId = null;
+  S.sessions = S.sessions.filter(s => s.id !== sesId);
+  save(); go('home');
+}
+
+// ═══════════════════════════════════════════════
+// ROUTER
+// ═══════════════════════════════════════════════
+
+let authenticated = sessionStorage.getItem('doko-auth') === '1';
+
+function renderLock() {
+  document.getElementById('app').innerHTML = `
+  <div style="min-height:100dvh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:40px 32px;gap:14px">
+    <div id="lock-icon" style="width:96px;height:96px;border-radius:22px;background:var(--surface);display:flex;align-items:center;justify-content:center;font-size:64px;box-shadow:var(--sh)">🃟</div>
+    <div style="font-size:26px;font-weight:800;letter-spacing:-.5px">Doko · Kasse</div>
+    <div style="font-size:14px;color:var(--label2);margin-bottom:4px">Seit 2009</div>
+    <div style="width:100%;max-width:300px;display:flex;flex-direction:column;gap:10px">
+      <input type="password" id="pw-input" placeholder="Passwort" autocomplete="current-password"
+        style="width:100%;padding:15px 16px;border:1.5px solid var(--sep);border-radius:var(--r);font-size:17px;background:var(--surface);color:var(--label);text-align:center;outline:none"
+        onkeydown="if(event.key==='Enter')checkPw()">
+      <div id="pw-err" style="color:var(--red);text-align:center;font-size:14px;min-height:18px"></div>
+      <button class="btn btn-primary btn-full" onclick="checkPw()">Weiter</button>
+    </div>
+  </div>`;
+  setTimeout(() => {
+    document.getElementById('pw-input')?.focus();
+    setLockIcon();
+  }, 80);
+}
+
+function setLockIcon() {
+  try {
+    const cv = Object.assign(document.createElement('canvas'), {width:192, height:192});
+    const x = cv.getContext('2d');
+    x.fillStyle = '#1C1C1E';
+    x.beginPath(); x.roundRect(0,0,192,192,40); x.fill();
+    x.fillStyle = '#FFFFFF';
+    x.beginPath(); x.roundRect(22,18,148,156,16); x.fill();
+    x.fillStyle = '#FF3B30';
+    x.font = '900 108px -apple-system,Arial'; x.textAlign='center'; x.textBaseline='alphabetic';
+    x.fillText('Q', 96, 126);
+    x.font = '900 44px Georgia,serif';
+    x.fillText('♥', 96, 162);
+    const el = document.getElementById('lock-icon');
+    if (el) { el.style.backgroundImage=`url(${cv.toDataURL()})`; el.style.backgroundSize='cover'; el.textContent=''; }
+  } catch(e){}
+}
+
+const PW_HASH = 'd49153f37d93f6a05b97bff92f0f904fa8f5ec7faf11599d615d9f2670cf3401';
+async function sha256(str) {
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(str));
+  return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('');
+}
+async function checkPw() {
+  const v = (document.getElementById('pw-input')?.value || '').toLowerCase().trim();
+  const h = await sha256(v);
+  if (h === PW_HASH) {
+    authenticated = true;
+    sessionStorage.setItem('doko-auth', '1');
+    render();
+  } else {
+    document.getElementById('pw-err').textContent = 'Falsches Passwort';
+    const inp = document.getElementById('pw-input');
+    if (inp) { inp.value = ''; inp.focus(); }
+  }
+}
+
+let view = 'home';
+const go = v => { view = v; render(); };
+
+// ═══════════════════════════════════════════════
+// RENDER
+// ═══════════════════════════════════════════════
+
+// ═══════════════════════════════════════════════
+// SWIPE GESTURES
+// ═══════════════════════════════════════════════
+
+function goBack() {
+  if (document.querySelector('.overlay.open')) return; // sheet offen → kein back
+  if (view !== 'home') go('home');
+}
+
+function swipeDeleteGame(gameId) {
+  // Snap item back first, then confirm
+  const wrap = document.querySelector(`.g-wrap[data-gid="${gameId}"]`);
+  const item = wrap?.querySelector('.g-item');
+  if (item) { item.style.transition = 'transform .15s ease'; item.style.transform = ''; }
+  setTimeout(() => deleteGame(gameId), 160);
+}
+
+function closeAllGameSwipes() {
+  document.querySelectorAll('.g-wrap .g-item').forEach(el => {
+    el.style.transition = 'transform .2s ease'; el.style.transform = '';
+  });
+}
+
+function initSwipes() {
+  let bsX = null, bsY = null;       // back-swipe start
+  let gs = null;                      // game-swipe state
+
+  document.addEventListener('touchstart', e => {
+    const t = e.touches[0];
+
+    // Back swipe: finger starts in left 40px
+    if (t.clientX < 40 && view !== 'home') { bsX = t.clientX; bsY = t.clientY; }
+
+    // Game item swipe
+    const wrap = e.target.closest('.g-wrap');
+    if (wrap) {
+      gs = { wrap, item: wrap.querySelector('.g-item'), x0: t.clientX, y0: t.clientY, dx: 0, axis: null };
+    } else if (!e.target.closest('.g-del')) {
+      closeAllGameSwipes();
+    }
+  }, {passive: true});
+
+  document.addEventListener('touchmove', e => {
+    if (!gs) return;
+    const t = e.touches[0];
+    const dx = t.clientX - gs.x0;
+    const dy = t.clientY - gs.y0;
+    if (!gs.axis && (Math.abs(dx) > 6 || Math.abs(dy) > 6)) {
+      gs.axis = Math.abs(dx) > Math.abs(dy) ? 'h' : 'v';
+    }
+    if (gs.axis === 'h') {
+      e.preventDefault();
+      const clamped = Math.max(-80, Math.min(0, dx));
+      gs.dx = clamped;
+      gs.item.style.transition = 'none';
+      gs.item.style.transform = `translateX(${clamped}px)`;
+    }
+  }, {passive: false});
+
+  document.addEventListener('touchend', e => {
+    // Back swipe
+    if (bsX !== null) {
+      const t = e.changedTouches[0];
+      if (t.clientX - bsX > 80 && Math.abs(t.clientY - bsY) < 80) goBack();
+      bsX = null;
+    }
+    // Game swipe
+    if (gs) {
+      if (gs.dx < -50) {
+        gs.item.style.transition = 'transform .18s ease';
+        gs.item.style.transform = 'translateX(-80px)';
+      } else {
+        gs.item.style.transition = 'transform .18s ease';
+        gs.item.style.transform = '';
+      }
+      gs = null;
+    }
+  }, {passive: true});
+}
+
+function render() {
+  if (!authenticated) { renderLock(); return; }
+  try {
+    const app = document.getElementById('app');
+    app.innerHTML = ({
+      home:          renderHome,
+      session:       renderSession,
+      history:       renderHistory,
+      sessionDetail: renderSessionDetail,
+      stats:         renderStats,
+    }[view] || renderHome)();
+    window.scrollTo(0, 0);
+  } catch(e) {
+    console.error('render error:', e);
+    view = 'home';
+    document.getElementById('app').innerHTML = renderHome();
+  }
+}
+
+// ═══════════════════════════════════════════════
+// HOME
+// ═══════════════════════════════════════════════
+
+function renderHome() {
+  const ses = getCur();
+  const hasActive = ses && !ses.settled;
+  const settled = S.sessions.filter(s=>s.settled);
+
+  return `
+<div>
+  <div class="nav"><h1>🃏 Doko · Kasse</h1></div>
+  <div style="padding:28px 16px 20px;text-align:center">
+    <div style="font-size:12px;font-weight:700;color:var(--label2);text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px">Kassenstand</div>
+    <div class="kasse-amt">${fEuro(S.kasseSaldo)}</div>
+    <div style="font-size:13px;color:var(--label2);margin-top:5px">${settled.length} Abende seit 2009</div>
+  </div>
+
+  ${hasActive ? `
+  <div class="section">
+    <div class="section-label">Aktiver Abend</div>
+    <div class="card">
+      <div class="row" style="cursor:pointer" onclick="go('session')">
+        <div class="row-label"><div style="font-weight:600">${fDate(ses.date)}</div><div class="row-sub">${ses.games.length} Spiele gespielt</div></div>
+        <span style="color:var(--primary);font-weight:600;font-size:15px">Weiter →</span>
+      </div>
+    </div>
+  </div>
+  ` : `
+  <div style="padding:0 16px 16px">
+    <button class="btn btn-primary btn-full" onclick="openSheet('ns-sheet')">Neuen Abend starten</button>
+  </div>
+  `}
+
+  <div class="section">
+    <div class="card">
+      <div class="row" style="cursor:pointer" onclick="go('history')">
+        <div class="row-label">📋 Alle Abende</div>
+        <span class="row-chevron">›</span>
+      </div>
+      <div class="row" style="cursor:pointer" onclick="go('stats')">
+        <div class="row-label">📊 Statistiken</div>
+        <span class="row-chevron">›</span>
+      </div>
+      <div class="row" style="cursor:pointer" onclick="openSheet('import-sheet')">
+        <div class="row-label">📥 Daten importieren</div>
+        <span class="row-chevron">›</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+${nsSheetHTML()}
+${importSheetHTML()}
+`;
+}
+
+// ═══════════════════════════════════════════════
+// SESSION VIEW
+// ═══════════════════════════════════════════════
+
+function renderSession() {
+  const ses = getCur();
+  if (!ses) return renderHome();
+  const t = sessionTotals(ses);
+  const bm = nextBockMult(ses);
+
+  return `
+<div>
+  <div class="nav">
+    <span class="nav-back" onclick="go('home')">‹ 🏠</span>
+    <h1>${fDateShort(ses.date)}</h1>
+    <span class="nav-action" onclick="openSheet('end-sheet')">💸 Abrechnen</span>
+  </div>
+
+  ${bm > 1 ? `<div style="padding:10px 16px 0">
+    <div class="${bm===4?'bock-chip dbl':'bock-chip'}" style="width:100%;justify-content:center;font-size:14px;padding:10px 16px">
+      ${bm===4?'⚡ DOPPELBOCK':'🔥 BOCKRUNDE'} — nächstes Spiel ${bm}×
+    </div>
+  </div>` : ''}
+
+  <!-- Scoreboard -->
+  <div class="section mt16">
+    <div class="card">
+      <div class="scoreboard">
+        ${PIDS.map(p => {
+          const v = t[p]||0;
+          const cls = v>0?'pos':v<0?'neg':'zero';
+          return `<div class="sb-player">
+            <div class="sb-name">${PL[p].s}</div>
+            <div class="sb-pts ${cls}">${v>0?'+':''}${v}</div>
+          </div>`;
+        }).join('')}
+      </div>
+    </div>
+  </div>
+
+  <!-- Table viz -->
+  <div class="section">
+    <div class="section-label">Tisch · Spiel ${ses.games.length+1} · Geber: ${PL[ses.seatOrder[ses.dealerIdx ?? ses.games.length%4]].s}</div>
+    <div class="card" style="padding:16px">
+      ${tableViz(ses)}
+    </div>
+  </div>
+
+  <!-- Manual Bock button -->
+  <div style="padding:0 16px 8px;display:flex;gap:8px">
+    <button class="btn btn-sm btn-secondary" onclick="manualBock(1)" style="flex:1">🔥 Bock</button>
+    <button class="btn btn-sm btn-secondary" onclick="manualBock(2)" style="flex:1">⚡ Doppelbock</button>
+  </div>
+
+  <!-- Games -->
+  ${ses.games.length > 0 ? `
+  <div class="section">
+    <div class="section-label">Spiele (${ses.games.length})</div>
+    <div class="card">
+      ${[...ses.games].reverse().map(g => gameItemHTML(g)).join('')}
+    </div>
+  </div>` : `<div style="padding:20px 16px;text-align:center;color:var(--label2);font-size:15px">Noch keine Spiele — tippe + um zu starten</div>`}
+
+  <div style="padding:8px 16px 4px;text-align:center">
+    <button onclick="deleteSession('${ses.id}')" style="border:none;background:none;color:var(--red);font-size:14px;font-weight:600;cursor:pointer;opacity:.7;padding:8px 16px">Abend löschen</button>
+  </div>
+  <div style="height:80px"></div>
+</div>
+<button class="fab" onclick="openGameEntry()">+</button>
+${gameEntrySheetHTML(ses)}
+${endSheetHTML(ses)}
+`;
+}
+
+function tableViz(ses) {
+  const di = ses.dealerIdx ?? ses.games.length % 4;
+  const chip = (pid, isDealer) =>
+    `<div style="display:inline-flex;align-items:center;gap:4px;padding:5px 11px;border-radius:999px;font-size:13px;font-weight:700;background:${isDealer?'var(--orange)':'var(--surface3)'};color:${isDealer?'#fff':'var(--label)'}">
+      ${isDealer?'🎴 ':''}${PL[pid].s}
+    </div>`;
+  const [pS,pW,pN,pO] = ses.seatOrder;
+  return `<div style="display:flex;flex-direction:column;align-items:center;gap:6px;padding:4px 0">
+    ${chip(pN, 2===di)}
+    <div style="display:flex;align-items:center;gap:16px">
+      ${chip(pW, 1===di)}
+      <div style="width:36px;height:36px;border-radius:50%;background:var(--surface2);border:1.5px solid var(--sep);display:flex;align-items:center;justify-content:center;font-size:16px">🃏</div>
+      ${chip(pO, 3===di)}
+    </div>
+    ${chip(pS, 0===di)}
+  </div>`;
+}
+
+function gameItemHTML(g) {
+  const typ = ST[g.spieltyp]?.l || g.spieltyp;
+  const bStr = g.bockMultiplier > 1 ? ` · ${g.bockMultiplier}×` : '';
+  const re = g.reTeam.map(p=>PL[p].s).join('+');
+  let badge = '', badgeColor = 'var(--label2)';
+
+  if (g.spieltyp === 'falsch') {
+    badge = '−21'; badgeColor = 'var(--red)';
+  } else if (g.spieltyp === 'abbruch') {
+    badge = 'Abbruch'; badgeColor = 'var(--label2)';
+  } else {
+    const maxPts = Math.max(...Object.values(g.scores));
+    badge = `±${maxPts}`;
+    badgeColor = g.winner === 'Re' ? 'var(--primary)' : 'var(--red)';
+  }
+
+  return `<div class="g-wrap" data-gid="${g.id}">
+    <div class="g-item" style="cursor:pointer" onclick="openGameEdit('${g.id}')">
+      <div class="g-num">${g.index+1}</div>
+      <div class="g-info">
+        <div class="g-type">${typ}${bStr}</div>
+        <div class="g-sub">${g.spieltyp==='falsch'?`${PL[g.falschBediener].s} falsch bedient`:g.spieltyp==='abbruch'?'Abbruch (5×9)':g.winner==='Re'?`Re gewonnen · Re: ${re}`:`Kontra gewonnen · Re: ${re}`}</div>
+      </div>
+      <div class="g-badge" style="color:${badgeColor}">${badge}</div>
+    </div>
+    <button class="g-del" onclick="event.stopPropagation();swipeDeleteGame('${g.id}')">Löschen</button>
+  </div>`;
+}
+
+function manualBock(count) {
+  const ses = getCur();
+  for (let i=0;i<count;i++) scheduleBock(ses, 0);
+  save(); render();
+}
+
+// ═══════════════════════════════════════════════
+// GAME ENTRY
+// ═══════════════════════════════════════════════
+
+let GE = {};
+let editingGameId = null;
+
+function openGameEntry() {
+  editingGameId = null;
+  const ses = getCur();
+  const bm = nextBockMult(ses);
+  GE = {
+    spieltyp:'normal', reTeam:[], kontraTeam:[], winner:null,
+    verliererAugen:59, falschBediener:null,
+    ansagen:{re:false,kontra:false,keine90Re:false,keine60Re:false,keine30Re:false,schwarzRe:false,keine90Kontra:false,keine60Kontra:false,keine30Kontra:false,schwarzKontra:false},
+    sp:{fuchsRe:0,fuchsKo:0,karlchen:null,dkRe:0,dkKo:0}, bockMultiplier:bm, gezwungen:false,
+  };
+  openSheet('ge-sheet');
+  const t = document.getElementById('ge-title'); if(t) t.textContent = 'Spiel eintragen';
+  updateGE();
+}
+
+function openGameEdit(gameId) {
+  const ses = getCur();
+  const game = ses.games.find(g => g.id === gameId);
+  if (!game) return;
+  editingGameId = gameId;
+  GE = {
+    spieltyp: game.spieltyp,
+    reTeam: [...game.reTeam],
+    kontraTeam: [...game.kontraTeam],
+    winner: game.winner,
+    verliererAugen: game.verliererAugen ?? 59,
+    falschBediener: game.falschBediener ?? null,
+    ansagen: {...(game.ansagen || {})},
+    sp: {...(game.sp || {fuchsRe:0,fuchsKo:0,karlchen:null,dkRe:0,dkKo:0})},
+    bockMultiplier: game.bockMultiplier ?? 1,
+    gezwungen: game.gezwungen ?? false,
+  };
+  openSheet('ge-sheet');
+  const t = document.getElementById('ge-title'); if(t) t.textContent = `Spiel ${game.index+1} bearbeiten`;
+  updateGE();
+}
+
+function gameEntrySheetHTML(ses) {
+  return `<div class="overlay" id="ge-sheet" onclick="bgClose(event,'ge-sheet')">
+    <div class="sheet" onclick="event.stopPropagation()">
+      <div class="sheet-handle"></div>
+      <div class="sheet-title" id="ge-title">Spiel eintragen</div>
+      <div id="ge-body"></div>
+    </div>
+  </div>`;
+}
+
+function updateGE() {
+  const g = GE;
+  const isSolo = SOLOS.includes(g.spieltyp);
+  const isSpecial = ST[g.spieltyp]?.special;
+  const canPreview = g.winner || g.spieltyp === 'falsch' || g.spieltyp === 'abbruch';
+  const scores = canPreview ? calcScores({...g, scores:{}}) : null;
+
+  // Winner & loser sides
+  const ws = g.winner, ls = ws === 'Re' ? 'Kontra' : 'Re';
+
+  let html = '';
+
+  // SPIELTYP
+  html += `<div class="f-section">
+    <div class="f-label">Spieltyp</div>
+    <div class="st-grid">
+      ${Object.entries(ST).map(([k,v]) => `
+        <button class="st-btn${k===g.spieltyp?' on':''}${v.special?' special':''}" onclick="geSetType('${k}')">${v.l}</button>
+      `).join('')}
+    </div>
+  </div>`;
+
+  // FALSCH BEDIENT
+  if (g.spieltyp === 'falsch') {
+    html += `<div class="f-section">
+      <div class="f-label">Wer hat falsch bedient?</div>
+      <div class="p-grid">
+        ${PIDS.map(p => `<button class="p-btn${g.falschBediener===p?' sel-neg':''}" onclick="geSetFalsch('${p}')">${PL[p].s}</button>`).join('')}
+      </div>
+    </div>`;
+  }
+
+  // ABBRUCH — nothing to configure
+  else if (g.spieltyp !== 'abbruch') {
+
+    // RE TEAM
+    html += `<div class="f-section">
+      <div class="f-label">${isSolo ? 'Solo-Spieler' : 'Re-Spieler (2 wählen)'}</div>
+      <div class="p-grid">
+        ${PIDS.map(p => {
+          const isRe = g.reTeam.includes(p);
+          const isKo = g.kontraTeam.includes(p);
+          return `<button class="p-btn${isRe?' re':isKo?' ko':''}" onclick="geToggleRe('${p}')">
+            ${PL[p].s}
+            ${isRe ? '<br><span style="font-size:11px;font-weight:600">Re</span>' : isKo ? '<br><span style="font-size:11px;font-weight:600">Kontra</span>' : ''}
+          </button>`;
+        }).join('')}
+      </div>
+      ${g.kontraTeam.length > 0 ? `<div style="margin-top:8px;font-size:13px;color:var(--label2)">Kontra: ${g.kontraTeam.map(p=>PL[p].s).join(' + ')}</div>` : ''}
+    </div>`;
+
+    // WINNER
+    if (g.reTeam.length >= (isSolo ? 1 : 2)) {
+      html += `<div class="f-section">
+        <div class="f-label">Gewinner</div>
+        <div class="seg">
+          <button class="seg-btn${g.winner==='Re'?' on':''}" onclick="geSetWinner('Re')">✓ Re</button>
+          <button class="seg-btn${g.winner==='Kontra'?' on':''}" onclick="geSetWinner('Kontra')">✓ Kontra</button>
+        </div>
+      </div>`;
+    }
+
+    // AUGEN + ANSAGEN
+    if (g.winner) {
+      const av = g.verliererAugen;
+      const stepBtn = (label, val) => `<button onclick="geSetAugen(${Math.max(0,Math.min(119,val))})" style="flex:1;padding:10px 4px;border:1.5px solid var(--sep);border-radius:var(--r-sm);background:var(--surface);color:var(--label);font-size:15px;font-weight:700;cursor:pointer;min-width:0">${label}</button>`;
+      html += `<div class="f-section">
+        <div class="f-label">Augen der Verlierer</div>
+        <div style="display:flex;gap:6px;margin-bottom:10px">
+          ${[0,29,59,89,119].map(v=>`<button onclick="geSetAugen(${v})" style="flex:1;padding:9px 2px;border:2px solid ${av===v?'var(--primary)':'var(--sep)'};border-radius:var(--r-sm);background:${av===v?'rgba(0,122,255,.1)':'var(--surface)'};color:${av===v?'var(--primary)':'var(--label2)'};font-size:14px;font-weight:700;cursor:pointer">${v}</button>`).join('')}
+        </div>
+        <div style="background:var(--surface2);border-radius:var(--r);padding:10px 12px;display:flex;align-items:center;gap:8px">
+          ${stepBtn('−10', av-10)}
+          ${stepBtn('−1', av-1)}
+          <div style="flex:2;text-align:center;font-size:52px;font-weight:800;font-variant-numeric:tabular-nums;color:var(--label);letter-spacing:-2px">${av}</div>
+          ${stepBtn('+1', av+1)}
+          ${stepBtn('+10', av+10)}
+        </div>
+      </div>`;
+
+      html += `<div class="f-section">
+        <div class="f-label">Ansagen</div>
+        <div class="card" style="padding:0 14px">
+          ${tRow('ansagen.re', g.ansagen.re, 'Re angesagt')}
+          ${tRow('ansagen.kontra', g.ansagen.kontra, 'Kontra angesagt')}
+          ${tRow('gezwungen', g.gezwungen, '⚡ Gezwungen (Stich > 30 Punkte)')}
+        </div>
+        <div style="font-size:12px;color:var(--label2);margin:8px 0 6px">Sieger (${ws}) weitere Ansagen</div>
+        <div class="card" style="padding:0 14px">
+          ${tRow(`ansagen.keine90${ws}`, g.ansagen[`keine90${ws}`], `Keine 90 (${ws})`)}
+          ${tRow(`ansagen.keine60${ws}`, g.ansagen[`keine60${ws}`], `Keine 60 (${ws})`)}
+          ${tRow(`ansagen.keine30${ws}`, g.ansagen[`keine30${ws}`], `Keine 30 (${ws})`)}
+          ${tRow(`ansagen.schwarz${ws}`, g.ansagen[`schwarz${ws}`], `Schwarz (${ws})`)}
+        </div>
+        <div style="font-size:12px;color:var(--label2);margin:8px 0 6px">Verlierer (${ls}) Ansagen die nicht erfüllt wurden</div>
+        <div class="card" style="padding:0 14px">
+          ${tRow(`ansagen.keine90${ls}`, g.ansagen[`keine90${ls}`], `Keine 90 (${ls})`)}
+          ${tRow(`ansagen.keine60${ls}`, g.ansagen[`keine60${ls}`], `Keine 60 (${ls})`)}
+          ${tRow(`ansagen.keine30${ls}`, g.ansagen[`keine30${ls}`], `Keine 30 (${ls})`)}
+          ${tRow(`ansagen.schwarz${ls}`, g.ansagen[`schwarz${ls}`], `Schwarz (${ls})`)}
+        </div>
+      </div>`;
+
+      const avail = SP_AVAIL[g.spieltyp] || {};
+      const ctr = (key, max, label) => {
+        const v = g.sp[key]||0;
+        return `<div class="sp-row">
+          <div class="sp-name">${label}</div>
+          <div class="sp-btns">
+            <button class="sp-btn" onclick="geSpDec('${key}')" ${v<=0?'disabled style="opacity:.3"':''}>−</button>
+            <span style="min-width:22px;text-align:center;font-size:16px;font-weight:700;color:${v>0?'var(--primary)':'var(--label2)'}">${v}</span>
+            <button class="sp-btn" onclick="geSpInc('${key}',${max})">+</button>
+          </div>
+        </div>`;
+      };
+      html += `<div class="f-section">
+        <div class="f-label">Sonderpunkte</div>
+        <div class="card" style="padding:0 14px">
+          ${avail.fuchs ? ctr('fuchsRe',2,'🦊 Fuchs Re fängt') : ''}
+          ${avail.fuchs ? ctr('fuchsKo',2,'🦊 Fuchs Kontra fängt') : ''}
+          ${avail.karlchen ? `<div class="sp-row">
+            <div class="sp-name">👑 Karlchen (letzter Stich)</div>
+            <div class="sp-btns">
+              <button class="sp-btn${g.sp.karlchen==='Re'?' re':''}" onclick="geSpKarlchen('Re')">Re</button>
+              <button class="sp-btn${g.sp.karlchen==='Kontra'?' ko':''}" onclick="geSpKarlchen('Kontra')">Ko</button>
+              ${g.sp.karlchen?`<button class="sp-btn" onclick="geSpKarlchen(null)">✕</button>`:''}
+            </div>
+          </div>` : ''}
+          ${avail.dk ? ctr('dkRe',4,'♣️ Doppelkopf Re') : ''}
+          ${avail.dk ? ctr('dkKo',4,'♣️ Doppelkopf Kontra') : ''}
+          ${!avail.fuchs && !avail.karlchen && !avail.dk ? '<div style="padding:12px 0;color:var(--label2);font-size:14px">Keine Sonderpunkte bei diesem Spieltyp</div>' : ''}
+        </div>
+      </div>`;
+    }
+  }
+
+  // BOCK
+  html += `<div class="f-section">
+    <div class="f-label">Bockrunde</div>
+    <div class="seg">
+      <button class="seg-btn${g.bockMultiplier===1?' on':''}" onclick="geSetBock(1)">Normal</button>
+      <button class="seg-btn${g.bockMultiplier===2?' on':''}" onclick="geSetBock(2)">🔥 Bock</button>
+      <button class="seg-btn${g.bockMultiplier===4?' on':''}" onclick="geSetBock(4)">⚡ Doppelbock</button>
+    </div>
+  </div>`;
+
+  // PREVIEW
+  if (scores) {
+    const relevant = g.spieltyp === 'falsch' || g.spieltyp === 'abbruch' ? PIDS :
+      [...g.reTeam, ...g.kontraTeam];
+    const bd = calcBreakdown(g);
+    const isSolo = SOLOS.includes(g.spieltyp);
+    const bilateralMult = isSolo ? 3 : 2;
+
+    let breakdownHTML = '';
+    if (bd.basePts != null) {
+      breakdownHTML = `<div style="margin-bottom:12px;padding:10px 12px;background:var(--surface3);border-radius:var(--r-sm);font-size:13px;line-height:1.7">
+        ${bd.lines.map(l => `<div style="display:flex;justify-content:space-between;gap:8px">
+          <span style="color:var(--label2)">${l.label}</span>
+          <span style="font-weight:700;color:var(--label)">+${l.pts}</span>
+        </div>`).join('')}
+        ${bd.bockMultiplier > 1 ? `<div style="display:flex;justify-content:space-between;gap:8px;border-top:1px solid var(--sep);margin-top:4px;padding-top:4px">
+          <span style="color:var(--label2)">× Bock (${bd.bockMultiplier}×)</span>
+          <span style="font-weight:700;color:var(--orange)">= ${bd.basePts * bd.bockMultiplier}</span>
+        </div>` : `<div style="display:flex;justify-content:space-between;gap:8px;border-top:1px solid var(--sep);margin-top:4px;padding-top:4px">
+          <span style="color:var(--label2);font-weight:700">Spielwert</span>
+          <span style="font-weight:800;color:var(--label)">${bd.basePts}</span>
+        </div>`}
+        <div style="display:flex;justify-content:space-between;gap:8px">
+          <span style="color:var(--label2)">Bilateral (${isSolo?'1v3':'2v2'} → ×${bilateralMult} pro Spieler)</span>
+          <span style="font-weight:700;color:var(--primary)">×${bilateralMult}</span>
+        </div>
+      </div>`;
+    }
+
+    html += `<div class="f-section">
+      <div class="f-label">Punkte-Vorschau</div>
+      ${breakdownHTML}
+      <div class="preview">
+        ${relevant.map(p => {
+          const v = scores[p] || 0;
+          const color = v>0?'var(--green)':v<0?'var(--red)':'var(--label2)';
+          const side = g.reTeam.includes(p) ? 'Re' : 'Kontra';
+          return `<div class="preview-row">
+            <div class="preview-name">${PL[p].s} <span style="font-size:12px;font-weight:500;color:var(--label2)">${side}</span></div>
+            <div class="preview-pts" style="color:${color}">${v>0?'+':''}${v}</div>
+          </div>`;
+        }).join('')}
+      </div>
+    </div>`;
+  }
+
+  // SUBMIT
+  const ok = geValid();
+  html += `<div class="f-section">
+    <button class="btn btn-primary btn-full" ${ok?'':'disabled'} onclick="geSubmit()">Spiel speichern</button>
+    <button class="btn btn-secondary btn-full mt8" onclick="closeSheet('ge-sheet')">Abbrechen</button>
+  </div>`;
+
+  document.getElementById('ge-body').innerHTML = html;
+}
+
+function tRow(key, val, label) {
+  return `<div class="t-row">
+    <div class="t-lbl">${label}</div>
+    <label class="toggle">
+      <input type="checkbox" ${val?'checked':''} onchange="geToggle('${key}',this.checked)">
+      <div class="t-track"></div>
+    </label>
+  </div>`;
+}
+
+
+// GE actions
+const geSetType = t => { GE.spieltyp=t; GE.reTeam=[]; GE.kontraTeam=[]; GE.winner=null; GE.falschBediener=null; updateGE(); };
+const geSetFalsch = p => { GE.falschBediener=p; updateGE(); };
+const geSetWinner = w => { GE.winner=w; updateGE(); };
+const geSetAugen = v => { GE.verliererAugen=Math.max(0,Math.min(119,parseInt(v)||0)); updateGE(); };
+const geSetBock = v => { GE.bockMultiplier=v; updateGE(); };
+const geSpInc = (k,max) => { GE.sp[k]=Math.min(max,(GE.sp[k]||0)+1); updateGE(); };
+const geSpDec = k => { GE.sp[k]=Math.max(0,(GE.sp[k]||0)-1); updateGE(); };
+const geSpKarlchen = v => { GE.sp.karlchen = GE.sp.karlchen===v ? null : v; updateGE(); };
+
+function geToggleRe(pid) {
+  const g = GE;
+  const isSolo = SOLOS.includes(g.spieltyp);
+  const maxRe = isSolo ? 1 : 2;
+  if (g.reTeam.includes(pid)) { g.reTeam=g.reTeam.filter(p=>p!==pid); g.kontraTeam=g.kontraTeam.filter(p=>p!==pid); }
+  else if (g.kontraTeam.includes(pid)) { g.kontraTeam=g.kontraTeam.filter(p=>p!==pid); g.reTeam.push(pid); }
+  else if (g.reTeam.length < maxRe) { g.reTeam.push(pid); }
+  else { g.kontraTeam.push(pid); }
+  // Auto-fill Kontra
+  if (g.reTeam.length === maxRe) g.kontraTeam = PIDS.filter(p=>!g.reTeam.includes(p));
+  updateGE();
+}
+
+function geToggle(key, val) {
+  const parts = key.split('.');
+  if (parts.length === 2) GE[parts[0]][parts[1]] = val;
+  else GE[key] = val;
+  // Gezwungene Ansage → auto keine90 for winner
+  if (key === 'gezwungen' && val && GE.winner) GE.ansagen[`keine90${GE.winner}`] = true;
+  // Armut → auto keine90 Re
+  if (GE.spieltyp === 'armut' && GE.winner === 'Re') GE.ansagen.keine90Re = true;
+  updateGE();
+}
+
+function geValid() {
+  const g = GE;
+  if (g.spieltyp === 'abbruch') return true;
+  if (g.spieltyp === 'falsch') return g.falschBediener !== null;
+  const isSolo = SOLOS.includes(g.spieltyp);
+  return g.reTeam.length === (isSolo ? 1 : 2) && g.winner !== null;
+}
+
+function geSubmit() {
+  if (!geValid()) return;
+  const ses = getCur();
+
+  if (editingGameId) {
+    // Bestehendes Spiel aktualisieren
+    const idx = ses.games.findIndex(g => g.id === editingGameId);
+    if (idx !== -1) {
+      const game = ses.games[idx];
+      Object.assign(game, {
+        spieltyp: GE.spieltyp, reTeam:[...GE.reTeam], kontraTeam:[...GE.kontraTeam],
+        winner: GE.winner, verliererAugen: GE.verliererAugen,
+        ansagen:{...GE.ansagen}, sp:{...GE.sp},
+        bockMultiplier: GE.bockMultiplier, falschBediener: GE.falschBediener,
+        gezwungen: GE.gezwungen,
+      });
+      game.scores = calcScores(game);
+    }
+    recalcBockQ(ses);
+    recalcDealerIdx(ses);
+    editingGameId = null;
+  } else {
+    // Neues Spiel hinzufügen
+    const game = {
+      id: Date.now().toString(),
+      index: ses.games.length,
+      spieltyp: GE.spieltyp, reTeam:[...GE.reTeam], kontraTeam:[...GE.kontraTeam],
+      winner: GE.winner, verliererAugen: GE.verliererAugen,
+      ansagen:{...GE.ansagen}, sp:{...GE.sp},
+      bockMultiplier: GE.bockMultiplier, falschBediener: GE.falschBediener,
+      gezwungen: GE.gezwungen, scores:{},
+    };
+    game.scores = calcScores(game);
+    ses.games.push(game);
+    checkBockTriggers(ses, game);
+    if (!SOLOS.includes(game.spieltyp)) ses.dealerIdx = ((ses.dealerIdx ?? 0) + 1) % 4;
+  }
+
+  closeSheet('ge-sheet');
+  save(); render();
+}
+
+// ═══════════════════════════════════════════════
+// END SESSION
+// ═══════════════════════════════════════════════
+
+let ESS = {}; // end session soloStrafe
+
+function endSheetHTML(ses) {
+  return `<div class="overlay" id="end-sheet" onclick="bgClose(event,'end-sheet')">
+    <div class="sheet" onclick="event.stopPropagation()">
+      <div class="sheet-handle"></div>
+      <div class="sheet-title">Abend abrechnen</div>
+      <div id="end-body"></div>
+    </div>
+  </div>`;
+}
+
+function openEndSheet() {
+  ESS = {}; PIDS.forEach(p => ESS[p] = false);
+  document.getElementById('end-sheet')?.classList.add('open');
+  updateEndSheet();
+}
+
+function updateEndSheet() {
+  const ses = getCur();
+  const t = sessionTotals(ses);
+  const kb = kasseBeitrag(t, ESS);
+  const totalKasse = Object.values(kb).reduce((a,b)=>a+b,0);
+
+  let html = `<div class="f-section">
+    <div class="f-label">Endstand (${ses.games.length} Spiele)</div>
+    <div class="preview">
+      ${PIDS.map(p => {
+        const v = t[p]||0;
+        const color = v>0?'var(--green)':v<0?'var(--red)':'var(--label2)';
+        return `<div class="preview-row">
+          <div class="preview-name">${PL[p].s}</div>
+          <div class="preview-pts" style="color:${color}">${v>0?'+':''}${v}</div>
+        </div>`;
+      }).join('')}
+    </div>
+  </div>`;
+
+  html += `<div class="f-section">
+    <div class="f-label">Kein Solo gespielt? (+5 €)</div>
+    <div class="card" style="padding:0 14px">
+      ${PIDS.map(p => `<div class="t-row">
+        <div class="t-lbl">${PL[p].s} — kein Solo</div>
+        <label class="toggle">
+          <input type="checkbox" ${ESS[p]?'checked':''} onchange="essToggle('${p}',this.checked)">
+          <div class="t-track"></div>
+        </label>
+      </div>`).join('')}
+    </div>
+  </div>`;
+
+  const max = Math.max(...PIDS.map(p => t[p]||0));
+  html += `<div class="f-section">
+    <div class="f-label">Kassen-Beitrag</div>
+    <div style="font-size:12px;color:var(--label2);margin-bottom:8px">Abstand zur Höchstpunktzahl (${max > 0 ? '+' : ''}${max}) ÷ 10, max. 10 € · Sieger zahlt 0</div>
+    <div class="preview">
+      ${PIDS.map(p => `<div class="preview-row">
+        <div class="preview-name">${PL[p].s}</div>
+        <div class="preview-pts" style="color:${kb[p]>0?'var(--red)':'var(--label2)'}">+${fEuro(kb[p])}</div>
+      </div>`).join('')}
+      <div style="border-top:1px solid var(--sep);margin-top:8px;padding-top:8px">
+        <div class="preview-row">
+          <div class="preview-name" style="font-weight:800">Gesamt</div>
+          <div class="preview-pts" style="color:var(--green);font-weight:800">+${fEuro(totalKasse)}</div>
+        </div>
+      </div>
+    </div>
+  </div>`;
+
+  html += `<div class="f-section">
+    <button class="btn btn-primary btn-full" onclick="confirmEnd()">Abend abschließen ✓</button>
+    <button class="btn btn-secondary btn-full mt8" onclick="closeSheet('end-sheet')">Abbrechen</button>
+  </div>`;
+
+  document.getElementById('end-body').innerHTML = html;
+}
+
+function essToggle(pid, val) {
+  ESS[pid] = val;
+  updateEndSheet();
+}
+
+function confirmEnd() {
+  const ses = getCur();
+  const t = sessionTotals(ses);
+  const kb = kasseBeitrag(t, ESS);
+  const total = Object.values(kb).reduce((a,b)=>a+b,0);
+  ses.settled = true;
+  ses.kasseBeitrag = kb;
+  S.kasseSaldo += total;
+  S.currentId = null;
+  closeSheet('end-sheet');
+  save(); go('home');
+}
+
+// ═══════════════════════════════════════════════
+// NEW SESSION SHEET
+// ═══════════════════════════════════════════════
+
+let NSD = []; // seat order draft
+
+function nsSheetHTML() {
+  return `<div class="overlay" id="ns-sheet" onclick="bgClose(event,'ns-sheet')">
+    <div class="sheet" onclick="event.stopPropagation()">
+      <div class="sheet-handle"></div>
+      <div class="sheet-title">Neuer Spielabend</div>
+      <div class="f-section">
+        <div class="f-label">Datum</div>
+        <input type="date" id="ns-date" value="${today()}"
+          style="width:100%;padding:13px 14px;border:1.5px solid var(--sep);border-radius:var(--r-sm);font-size:17px;background:var(--surface);color:var(--label)">
+      </div>
+      <div class="f-section">
+        <div class="f-label">Sitzordnung (Losentscheid)</div>
+        <div class="f-hint">Wähle die Reihenfolge im Uhrzeigersinn, startend mit Süd (= erster Geber).</div>
+        <div id="ns-seats"></div>
+      </div>
+      <div class="f-section">
+        <button class="btn btn-primary btn-full" onclick="startSession()">Abend starten</button>
+      </div>
+    </div>
+  </div>`;
+}
+
+function renderNSSeats() {
+  const pos = ['Süd (Geber 1)','West (Geber 2)','Nord (Geber 3)','Ost (Geber 4)'];
+  let html = '';
+  for (let i=0;i<4;i++) {
+    const cur = NSD[i];
+    html += `<div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--sep)">
+      <div style="width:90px;font-size:13px;color:var(--label2);font-weight:600">${pos[i]}</div>
+      <div style="display:flex;gap:5px;flex:1">
+        ${PIDS.map(p => `<button class="sp-btn${NSD[i]===p?' re':''}" ${NSD.includes(p)&&NSD[i]!==p?'disabled style="opacity:.3"':''} onclick="nsSeat(${i},'${p}')">${PL[p].s}</button>`).join('')}
+      </div>
+    </div>`;
+  }
+  const el = document.getElementById('ns-seats');
+  if (el) el.innerHTML = html;
+}
+
+function nsSeat(i, pid) {
+  NSD = NSD.filter(p=>p!==pid);
+  NSD[i] = pid;
+  renderNSSeats();
+}
+
+function openSheet(id) {
+  document.getElementById(id)?.classList.add('open');
+  if (id === 'ns-sheet') { NSD = []; setTimeout(renderNSSeats, 50); }
+  if (id === 'end-sheet') { ESS = {}; PIDS.forEach(p => ESS[p] = false); updateEndSheet(); }
+}
+
+function closeSheet(id) { document.getElementById(id)?.classList.remove('open'); }
+function bgClose(e, id) { if (e.target.id === id) closeSheet(id); }
+
+function startSession() {
+  let order = [...NSD].slice(0,4);
+  PIDS.forEach(p => { if (!order.includes(p)) order.push(p); });
+  order = order.filter(Boolean).slice(0,4);
+  const date = document.getElementById('ns-date')?.value || today();
+  const ses = {id:Date.now().toString(), date, seatOrder:order, games:[], bockQ:[], dealerIdx:0, settled:false, kasseBeitrag:null};
+  S.sessions.unshift(ses);
+  S.currentId = ses.id;
+  closeSheet('ns-sheet');
+  save(); go('session');
+}
+
+// ═══════════════════════════════════════════════
+// HISTORY
+// ═══════════════════════════════════════════════
+
+let detailSesId = null;
+
+function renderHistory() {
+  const settled = S.sessions.filter(s=>s.settled).sort((a,b)=>b.date.localeCompare(a.date));
+  return `<div>
+    <div class="nav">
+      <span class="nav-back" onclick="go('home')">‹ Zurück</span>
+      <h1>Alle Abende</h1>
+      <span></span>
+    </div>
+    ${settled.length === 0 ? `<div class="empty"><div class="empty-icon">📋</div><div>Noch keine Abende</div></div>` : `
+    <div class="section mt16">
+      <div class="card">
+        ${settled.map(s => {
+          const kb = s.kasseBeitrag || {};
+          const kTotal = Object.values(kb).reduce((a,b)=>a+b,0);
+          const hasGames = (s.games||[]).length > 0;
+          const sub = hasGames
+            ? PIDS.map(p => { const t=sessionTotals(s); const v=t[p]||0; return `${PL[p].s} ${v>=0?'+':''}${v}`; }).join(' · ')
+            : PIDS.map(p => `${PL[p].s} ${fEuro(kb[p]||0)}`).join(' · ');
+          return `<div class="row" style="cursor:pointer" onclick="detailSesId='${s.id}';go('sessionDetail')">
+            <div class="row-label">
+              <div style="font-weight:600">${fDate(s.date)}</div>
+              <div class="row-sub">${hasGames ? s.games.length+' Spiele · ' : ''}${sub}</div>
+            </div>
+            <div style="text-align:right;display:flex;align-items:center;gap:10px">
+              <div style="font-weight:700;color:var(--green)">${fEuro(kTotal)}</div>
+              <button onclick="event.stopPropagation();deleteSession('${s.id}')" style="border:none;background:none;color:var(--label3);font-size:18px;padding:4px;cursor:pointer">✕</button>
+            </div>
+          </div>`;
+        }).join('')}
+      </div>
+    </div>`}
+  </div>`;
+}
+
+function renderSessionDetail() {
+  const s = S.sessions.find(x => x.id === detailSesId);
+  if (!s) return renderHistory();
+  const kb = s.kasseBeitrag || {};
+  const kTotal = Object.values(kb).reduce((a,b)=>a+b,0);
+  const hasGames = (s.games||[]).length > 0;
+  const t = hasGames ? sessionTotals(s) : null;
+
+  let html = `<div>
+    <div class="nav">
+      <span class="nav-back" onclick="go('history')">‹ Abende</span>
+      <h1>${fDateShort(s.date)}</h1>
+      <span></span>
+    </div>`;
+
+  if (hasGames) {
+    html += `<div class="section mt16">
+      <div class="section-label">Spielstand</div>
+      <div class="card"><div class="scoreboard">
+        ${PIDS.map(p => { const v=t[p]||0; return `<div class="sb-player">
+          <div class="sb-name">${PL[p].s}</div>
+          <div class="sb-pts ${v>0?'pos':v<0?'neg':'zero'}">${v>0?'+':''}${v}</div>
+        </div>`; }).join('')}
+      </div></div>
+    </div>`;
+  }
+
+  html += `<div class="section ${hasGames?'':'mt16'}">
+    <div class="section-label">Kassen-Beitrag · Gesamt ${fEuro(kTotal)}</div>
+    <div class="card">
+      ${PIDS.map(p => {
+        const v = kb[p]||0;
+        return `<div class="row">
+          <div class="row-label">${PL[p].s}</div>
+          <div style="font-weight:700;color:${v>0?'var(--red)':'var(--label2)'}">${fEuro(v)}</div>
+        </div>`;
+      }).join('')}
+    </div>
+  </div>`;
+
+  if (hasGames) {
+    html += `<div class="section">
+      <div class="section-label">Spiele (${s.games.length})</div>
+      <div class="card">
+        ${[...s.games].reverse().map(g => gameItemHTML(g)).join('')}
+      </div>
+    </div>`;
+  }
+
+  html += `<div style="height:32px"></div></div>`;
+  return html;
+}
+
+// ═══════════════════════════════════════════════
+// STATS
+// ═══════════════════════════════════════════════
+
+const P_COLORS = {gee:'#007AFF', chrizz:'#FF9500', freed:'#AF52DE', mjd:'#34C759'};
+
+function pieChartSVG(vals, size) {
+  const total = PIDS.reduce((s,p) => s + (vals[p]||0), 0);
+  if (total === 0) return `<svg width="${size}" height="${size}"><circle cx="${size/2}" cy="${size/2}" r="${size/2-2}" fill="var(--sep)"/></svg>`;
+  const r = size/2, cx = r, cy = r;
+  let angle = -Math.PI/2;
+  const nonZero = PIDS.filter(p => (vals[p]||0) > 0);
+  const paths = nonZero.map(p => {
+    const v = vals[p];
+    const sweep = (v/total) * 2 * Math.PI;
+    const x1 = cx + r*Math.cos(angle), y1 = cy + r*Math.sin(angle);
+    angle += sweep;
+    const x2 = cx + r*Math.cos(angle), y2 = cy + r*Math.sin(angle);
+    const large = sweep > Math.PI ? 1 : 0;
+    const d = nonZero.length === 1
+      ? `M ${cx-r} ${cy} A ${r} ${r} 0 1 1 ${cx+r} ${cy} A ${r} ${r} 0 1 1 ${cx-r} ${cy} Z`
+      : `M ${cx} ${cy} L ${x1.toFixed(2)} ${y1.toFixed(2)} A ${r} ${r} 0 ${large} 1 ${x2.toFixed(2)} ${y2.toFixed(2)} Z`;
+    return `<path d="${d}" fill="${P_COLORS[p]}" stroke="var(--bg)" stroke-width="2"/>`;
+  });
+  return `<svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">${paths.join('')}</svg>`;
+}
+
+function renderStats() {
+  const settled = S.sessions.filter(s=>s.settled);
+  const byYear = {};
+  settled.forEach(s => { const y=s.date.slice(0,4); if(!byYear[y])byYear[y]=[]; byYear[y].push(s); });
+  const years = Object.keys(byYear).sort().reverse();
+
+  // All-time: kasseBeitrag (€) — einzige durchgängige Metrik für 2009–heute
+  const allK = {}; PIDS.forEach(p=>allK[p]=0);
+  settled.forEach(s => { PIDS.forEach(p => allK[p] += (s.kasseBeitrag?.[p]||0)); });
+  const totalK = PIDS.reduce((s,p)=>s+allK[p],0);
+
+  // Spielpunkte nur aus Abenden mit echten Spielen
+  const withGames = settled.filter(s=>(s.games||[]).length>0);
+  const allP = {}; PIDS.forEach(p=>allP[p]=0);
+  withGames.forEach(s=>{ const t=sessionTotals(s); PIDS.forEach(p=>allP[p]+=(t[p]||0)); });
+
+  const scoreCard = (vals, fmt, unit, n) => PIDS.map(p => {
+    const v = vals[p]||0;
+    const disp = fmt(v);
+    const avg = n > 0 ? fmt(v/n) : fmt(0);
+    return `<div class="sb-player">
+      <div class="sb-name">${PL[p].s}</div>
+      <div style="font-size:${unit==='€'?'20':'22'}px;font-weight:800;font-variant-numeric:tabular-nums;color:${unit==='€'?'var(--green)':v>0?'var(--green)':v<0?'var(--red)':'var(--label2)'}">${disp}</div>
+      <div style="font-size:11px;color:var(--label2)">∅ ${avg}/Ab</div>
+    </div>`;
+  }).join('');
+
+  return `<div>
+    <div class="nav">
+      <span class="nav-back" onclick="go('home')">‹ Zurück</span>
+      <h1>Statistiken</h1>
+      <span></span>
+    </div>
+
+    <div class="section mt16">
+      <div class="section-label">All Time · ${settled.length} Abende · ${fEuro(totalK)} Kasse</div>
+      <div class="card">
+        <div style="padding:10px 16px 4px;font-size:11px;font-weight:700;color:var(--label2);text-transform:uppercase;letter-spacing:.06em">€ Kasse-Beitrag</div>
+        <div class="scoreboard" style="padding-top:4px">
+          ${scoreCard(allK, v => fEuro(v), '€', settled.length)}
+        </div>
+        ${withGames.length > 0 ? `<div style="border-top:1px solid var(--sep);padding:10px 16px 4px;font-size:11px;font-weight:700;color:var(--label2);text-transform:uppercase;letter-spacing:.06em">Spielpunkte (${withGames.length} Abende)</div>
+        <div class="scoreboard" style="padding-top:4px">
+          ${scoreCard(allP, v => (v>0?'+':'')+v, 'P', withGames.length)}
+        </div>` : ''}
+      </div>
+    </div>
+
+    ${years.map(yr => {
+      const ss = byYear[yr];
+      const yk = {}; PIDS.forEach(p=>yk[p]=0);
+      ss.forEach(s => PIDS.forEach(p => yk[p]+=(s.kasseBeitrag?.[p]||0)));
+      const yK = Object.values(yk).reduce((a,b)=>a+b,0);
+      const ssG = ss.filter(s=>(s.games||[]).length>0);
+      const yp = {}; PIDS.forEach(p=>yp[p]=0);
+      ssG.forEach(s=>{ const t=sessionTotals(s); PIDS.forEach(p=>yp[p]+=(t[p]||0)); });
+      return `<div class="section">
+        <div class="section-label">${yr} · ${ss.length} Abende · ${fEuro(yK)}</div>
+        <div class="card">
+          <div style="display:flex;align-items:center;gap:16px;padding:14px 16px">
+            <div style="flex-shrink:0">${pieChartSVG(yk, 100)}</div>
+            <div style="flex:1;display:flex;flex-direction:column;gap:6px">
+              ${PIDS.map(p => {
+                const v = yk[p]||0;
+                const pct = yK > 0 ? Math.round(v/yK*100) : 0;
+                return `<div style="display:flex;align-items:center;gap:8px">
+                  <div style="width:10px;height:10px;border-radius:50%;background:${P_COLORS[p]};flex-shrink:0"></div>
+                  <div style="flex:1;font-size:13px;font-weight:600;color:var(--label)">${PL[p].s}</div>
+                  <div style="font-size:13px;font-weight:700;color:var(--green);font-variant-numeric:tabular-nums">${fEuro(v)}</div>
+                  <div style="font-size:11px;color:var(--label2);width:30px;text-align:right">${pct}%</div>
+                </div>`;
+              }).join('')}
+            </div>
+          </div>
+          ${ssG.length > 0 ? `<div style="border-top:1px solid var(--sep);padding:6px 16px 10px">
+            <div style="font-size:11px;font-weight:700;color:var(--label2);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">Spielpunkte</div>
+            <div style="display:flex;gap:8px;justify-content:space-around">
+              ${PIDS.map(p => { const v=yp[p]||0; return `<div style="text-align:center">
+                <div style="font-size:13px;font-weight:700;color:${v>0?'var(--green)':v<0?'var(--red)':'var(--label2)'}">${v>0?'+':''}${v}</div>
+                <div style="font-size:10px;color:var(--label2)">${PL[p].s}</div>
+              </div>`; }).join('')}
+            </div>
+          </div>` : ''}
+        </div>
+      </div>`;
+    }).join('')}
+  </div>`;
+}
+
+// ═══════════════════════════════════════════════
+// IMPORT
+// ═══════════════════════════════════════════════
+
+function importSheetHTML() {
+  return `<div class="overlay" id="import-sheet" onclick="bgClose(event,'import-sheet')">
+    <div class="sheet" onclick="event.stopPropagation()">
+      <div class="sheet-handle"></div>
+      <div class="sheet-title">Historische Daten importieren</div>
+      <div class="f-section">
+        <div class="f-hint">CSV mit Spalten: Datum, Gee, Chrizz, Free-D, MJD<br>Datum als TT.MM.JJJJ oder JJJJ-MM-TT. Diese Werte sind bereits die €-Kassen-Beiträge pro Spieler.</div>
+        <textarea id="imp-csv" style="width:100%;height:180px;padding:12px;border:1.5px solid var(--sep);border-radius:var(--r-sm);font-family:monospace;font-size:12px;background:var(--surface);color:var(--label);resize:vertical;margin-top:12px" placeholder="16.05.2009,5,2,0,2&#10;20.05.2009,5,5,0,5&#10;..."></textarea>
+        <button class="btn btn-primary btn-full mt12" onclick="doImport()">Importieren</button>
+      </div>
+    </div>
+  </div>`;
+}
+
+function doImport() {
+  const raw = document.getElementById('imp-csv').value.trim();
+  const lines = raw.split('\n').filter(l=>l.trim());
+  let count = 0;
+  lines.forEach(line => {
+    const parts = line.split(/[,;\t]/).map(s=>s.trim().replace(',','.'));
+    if (parts.length < 5) return;
+    const [ds, ...sc] = parts;
+    if (!ds || /datum|date/i.test(ds)) return;
+    let date = ds;
+    if (/^\d{1,2}\.\d{1,2}\.\d{4}$/.test(ds)) {
+      const [d,m,y] = ds.split('.');
+      date = `${y}-${m.padStart(2,'0')}-${d.padStart(2,'0')}`;
+    }
+    const kb = {}; PIDS.forEach((p,i) => kb[p] = parseFloat(sc[i])||0);
+    const id = `imp-${date}`;
+    if (S.sessions.find(s=>s.id===id)) return;
+    const ses = {id, date, seatOrder:[...PIDS], games:[], bockQ:[], settled:true, kasseBeitrag:kb, imported:true};
+    S.sessions.push(ses);
+    S.kasseSaldo += Object.values(kb).reduce((a,b)=>a+b,0);
+    count++;
+  });
+  save();
+  closeSheet('import-sheet');
+  alert(`${count} Abende importiert.`);
+  render();
+}
+
+// ═══════════════════════════════════════════════
+// UTILS
+// ═══════════════════════════════════════════════
+
+const today = () => new Date().toISOString().slice(0,10);
+
+function fDate(iso) {
+  if (!iso) return '';
+  try { return new Date(iso+'T12:00:00').toLocaleDateString('de-DE',{weekday:'short',day:'numeric',month:'long',year:'numeric'}); }
+  catch(e){ return iso; }
+}
+function fDateShort(iso) {
+  if (!iso) return '';
+  try { return new Date(iso+'T12:00:00').toLocaleDateString('de-DE',{day:'numeric',month:'short',year:'numeric'}); }
+  catch(e){ return iso; }
+}
+function fEuro(v) {
+  if (v==null) return '0 €';
+  return Math.round(v).toLocaleString('de-DE') + ' €';
+}
+
+// ═══════════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════════
+
+const HISTORY_SEED=[{"id":"imp-2009-05-16","date":"2009-05-16","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":5,"chrizz":2,"freed":0,"mjd":2},"imported":true},{"id":"imp-2009-05-20","date":"2009-05-20","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":5,"chrizz":5,"freed":0,"mjd":5},"imported":true},{"id":"imp-2009-05-29","date":"2009-05-29","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":5,"chrizz":3,"freed":5,"mjd":5},"imported":true},{"id":"imp-2009-06-12","date":"2009-06-12","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":6,"chrizz":6,"freed":4,"mjd":0},"imported":true},{"id":"imp-2009-06-19","date":"2009-06-19","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":0,"chrizz":5,"freed":5,"mjd":2},"imported":true},{"id":"imp-2009-06-26","date":"2009-06-26","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":0,"chrizz":5,"freed":1,"mjd":5},"imported":true},{"id":"imp-2009-07-03","date":"2009-07-03","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":6,"chrizz":3,"freed":5,"mjd":5},"imported":true},{"id":"imp-2009-08-08","date":"2009-08-08","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":0,"chrizz":5,"freed":8,"mjd":3},"imported":true},{"id":"imp-2009-09-04","date":"2009-09-04","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":8,"chrizz":5,"freed":5,"mjd":0},"imported":true},{"id":"imp-2009-09-26","date":"2009-09-26","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":7,"chrizz":5,"freed":0,"mjd":4},"imported":true},{"id":"imp-2009-11-21","date":"2009-11-21","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":8,"chrizz":0,"freed":7,"mjd":5},"imported":true},{"id":"imp-2009-11-28","date":"2009-11-28","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":3,"chrizz":5,"freed":5,"mjd":5},"imported":true},{"id":"imp-2009-12-11","date":"2009-12-11","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":5,"chrizz":0,"freed":0,"mjd":5},"imported":true},{"id":"imp-2010-01-02","date":"2010-01-02","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":3,"chrizz":3,"freed":2,"mjd":2},"imported":true},{"id":"imp-2010-01-08","date":"2010-01-08","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":3,"chrizz":7,"freed":3,"mjd":5},"imported":true},{"id":"imp-2010-01-15","date":"2010-01-15","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":0,"chrizz":8,"freed":8,"mjd":1},"imported":true},{"id":"imp-2010-01-22","date":"2010-01-22","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":0,"chrizz":7,"freed":4,"mjd":2},"imported":true},{"id":"imp-2010-02-12","date":"2010-02-12","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":6,"chrizz":0,"freed":4,"mjd":0},"imported":true},{"id":"imp-2010-02-26","date":"2010-02-26","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":2,"chrizz":5,"freed":0,"mjd":8},"imported":true},{"id":"imp-2010-03-05","date":"2010-03-05","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":8,"chrizz":8,"freed":0,"mjd":5},"imported":true},{"id":"imp-2010-03-13","date":"2010-03-13","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":4,"chrizz":5,"freed":4,"mjd":0},"imported":true},{"id":"imp-2010-03-19","date":"2010-03-19","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":0,"chrizz":8,"freed":3,"mjd":4},"imported":true},{"id":"imp-2010-03-26","date":"2010-03-26","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":6,"chrizz":4,"freed":0,"mjd":5},"imported":true},{"id":"imp-2010-04-17","date":"2010-04-17","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":4,"chrizz":3,"freed":3,"mjd":5},"imported":true},{"id":"imp-2010-05-07","date":"2010-05-07","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":3,"chrizz":5,"freed":3,"mjd":0},"imported":true},{"id":"imp-2010-06-11","date":"2010-06-11","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":6,"chrizz":0,"freed":3,"mjd":4},"imported":true},{"id":"imp-2010-06-10","date":"2010-06-10","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":0,"chrizz":5,"freed":8,"mjd":3},"imported":true},{"id":"imp-2010-08-13","date":"2010-08-13","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":8,"chrizz":5,"freed":2,"mjd":0},"imported":true},{"id":"imp-2010-08-28","date":"2010-08-28","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":4,"chrizz":3,"freed":0,"mjd":5},"imported":true},{"id":"imp-2010-09-10","date":"2010-09-10","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":5,"chrizz":0,"freed":5,"mjd":5},"imported":true},{"id":"imp-2010-09-24","date":"2010-09-24","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":3,"chrizz":2,"freed":1,"mjd":3},"imported":true},{"id":"imp-2010-10-01","date":"2010-10-01","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":0,"chrizz":0,"freed":5,"mjd":5},"imported":true},{"id":"imp-2010-10-08","date":"2010-10-08","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":8,"chrizz":0,"freed":5,"mjd":5},"imported":true},{"id":"imp-2010-10-22","date":"2010-10-22","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":3,"chrizz":5,"freed":4,"mjd":4},"imported":true},{"id":"imp-2010-11-05","date":"2010-11-05","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":3,"chrizz":5,"freed":4,"mjd":5},"imported":true},{"id":"imp-2010-11-12","date":"2010-11-12","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":8,"chrizz":8,"freed":0,"mjd":5},"imported":true},{"id":"imp-2010-11-19","date":"2010-11-19","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":6,"chrizz":4,"freed":4,"mjd":0},"imported":true},{"id":"imp-2010-11-26","date":"2010-11-26","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":5,"chrizz":8,"freed":4,"mjd":0},"imported":true},{"id":"imp-2010-12-17","date":"2010-12-17","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":4,"chrizz":3,"freed":2,"mjd":5},"imported":true},{"id":"imp-2011-01-14","date":"2011-01-14","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":5,"chrizz":8,"freed":0,"mjd":5},"imported":true},{"id":"imp-2011-01-28","date":"2011-01-28","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":0,"chrizz":6,"freed":6,"mjd":5},"imported":true},{"id":"imp-2011-02-11","date":"2011-02-11","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":3,"chrizz":0,"freed":0,"mjd":5},"imported":true},{"id":"imp-2011-02-18","date":"2011-02-18","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":0,"chrizz":0,"freed":0,"mjd":0},"imported":true},{"id":"imp-2011-03-11","date":"2011-03-11","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":5,"chrizz":8,"freed":0,"mjd":4},"imported":true},{"id":"imp-2011-03-18","date":"2011-03-18","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":1,"chrizz":8,"freed":5,"mjd":0},"imported":true},{"id":"imp-2011-03-25","date":"2011-03-25","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":0,"chrizz":5,"freed":5,"mjd":5},"imported":true},{"id":"imp-2011-04-01","date":"2011-04-01","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":5,"chrizz":7,"freed":5,"mjd":5},"imported":true},{"id":"imp-2011-04-08","date":"2011-04-08","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":1,"chrizz":3,"freed":2,"mjd":3},"imported":true},{"id":"imp-2011-04-16","date":"2011-04-16","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":8,"chrizz":0,"freed":5,"mjd":5},"imported":true},{"id":"imp-2011-04-21","date":"2011-04-21","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":5,"chrizz":0,"freed":2,"mjd":5},"imported":true},{"id":"imp-2010-04-29","date":"2010-04-29","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":8,"chrizz":5,"freed":5,"mjd":0},"imported":true},{"id":"imp-2011-05-06","date":"2011-05-06","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":0,"chrizz":5,"freed":5,"mjd":5},"imported":true},{"id":"imp-2011-05-07","date":"2011-05-07","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":1,"chrizz":0,"freed":5,"mjd":3},"imported":true},{"id":"imp-2011-05-13","date":"2011-05-13","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":7,"chrizz":6,"freed":2,"mjd":5},"imported":true},{"id":"imp-2011-05-20","date":"2011-05-20","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":1,"chrizz":0,"freed":5,"mjd":5},"imported":true},{"id":"imp-2011-06-17","date":"2011-06-17","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":1,"chrizz":5,"freed":0,"mjd":3},"imported":true},{"id":"imp-2011-06-24","date":"2011-06-24","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":8,"chrizz":0,"freed":1,"mjd":4},"imported":true},{"id":"imp-2011-07-08","date":"2011-07-08","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":4,"chrizz":3,"freed":6,"mjd":3},"imported":true},{"id":"imp-2011-07-15","date":"2011-07-15","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":3,"chrizz":7,"freed":4,"mjd":3},"imported":true},{"id":"imp-2011-08-19","date":"2011-08-19","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":3,"chrizz":3,"freed":2,"mjd":5},"imported":true},{"id":"imp-2011-08-26","date":"2011-08-26","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":3,"chrizz":1,"freed":4,"mjd":4},"imported":true},{"id":"imp-2011-09-16","date":"2011-09-16","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":1,"chrizz":0,"freed":4,"mjd":5},"imported":true},{"id":"imp-2011-09-23","date":"2011-09-23","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":8,"chrizz":3,"freed":5,"mjd":3},"imported":true},{"id":"imp-2011-10-28","date":"2011-10-28","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":5,"chrizz":3,"freed":4,"mjd":4},"imported":true},{"id":"imp-2011-11-04","date":"2011-11-04","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":6,"chrizz":2,"freed":3,"mjd":5},"imported":true},{"id":"imp-2011-11-26","date":"2011-11-26","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":1,"chrizz":3,"freed":3,"mjd":5},"imported":true},{"id":"imp-2011-12-02","date":"2011-12-02","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":0,"chrizz":5,"freed":3,"mjd":5},"imported":true},{"id":"imp-2011-12-30","date":"2011-12-30","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":8,"chrizz":0,"freed":5,"mjd":4},"imported":true},{"id":"imp-2012-01-20","date":"2012-01-20","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":4,"chrizz":4,"freed":5,"mjd":0},"imported":true},{"id":"imp-2012-01-27","date":"2012-01-27","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":8,"chrizz":4,"freed":3,"mjd":4},"imported":true},{"id":"imp-2012-02-10","date":"2012-02-10","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":5,"chrizz":3,"freed":3,"mjd":5},"imported":true},{"id":"imp-2012-02-18","date":"2012-02-18","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":8,"chrizz":8,"freed":1,"mjd":0},"imported":true},{"id":"imp-2012-02-24","date":"2012-02-24","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":5,"chrizz":3,"freed":0,"mjd":0},"imported":true},{"id":"imp-2012-03-09","date":"2012-03-09","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":5,"chrizz":0,"freed":5,"mjd":3},"imported":true},{"id":"imp-2012-03-17","date":"2012-03-17","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":3,"chrizz":0,"freed":3,"mjd":5},"imported":true},{"id":"imp-2012-03-23","date":"2012-03-23","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":3,"chrizz":8,"freed":2,"mjd":5},"imported":true},{"id":"imp-2012-03-30","date":"2012-03-30","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":5,"chrizz":8,"freed":3,"mjd":0},"imported":true},{"id":"imp-2012-04-27","date":"2012-04-27","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":7,"chrizz":3,"freed":3,"mjd":3},"imported":true},{"id":"imp-2012-05-04","date":"2012-05-04","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":5,"chrizz":0,"freed":0,"mjd":1},"imported":true},{"id":"imp-2012-06-01","date":"2012-06-01","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":8,"chrizz":0,"freed":5,"mjd":8},"imported":true},{"id":"imp-2012-06-16","date":"2012-06-16","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":4,"chrizz":1,"freed":5,"mjd":0},"imported":true},{"id":"imp-2012-06-22","date":"2012-06-22","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":8,"chrizz":5,"freed":5,"mjd":0},"imported":true},{"id":"imp-2012-07-13","date":"2012-07-13","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":8,"chrizz":3,"freed":5,"mjd":1},"imported":true},{"id":"imp-2012-08-10","date":"2012-08-10","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":0,"chrizz":2,"freed":2,"mjd":5},"imported":true},{"id":"imp-2012-08-31","date":"2012-08-31","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":8,"chrizz":8,"freed":3,"mjd":0},"imported":true},{"id":"imp-2012-09-06","date":"2012-09-06","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":5,"chrizz":8,"freed":0,"mjd":5},"imported":true},{"id":"imp-2012-09-07","date":"2012-09-07","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":4,"chrizz":3,"freed":0,"mjd":3},"imported":true},{"id":"imp-2012-09-08","date":"2012-09-08","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":3,"chrizz":6,"freed":0,"mjd":5},"imported":true},{"id":"imp-2012-09-09","date":"2012-09-09","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":5,"chrizz":0,"freed":4,"mjd":7},"imported":true},{"id":"imp-2012-09-10","date":"2012-09-10","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":2,"chrizz":2,"freed":1,"mjd":0},"imported":true},{"id":"imp-2012-09-11","date":"2012-09-11","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":3,"chrizz":7,"freed":6,"mjd":7},"imported":true},{"id":"imp-2012-10-13","date":"2012-10-13","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":8,"chrizz":5,"freed":3,"mjd":1},"imported":true},{"id":"imp-2012-10-20","date":"2012-10-20","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":8,"chrizz":8,"freed":5,"mjd":0},"imported":true},{"id":"imp-2012-10-26","date":"2012-10-26","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":0,"chrizz":5,"freed":1,"mjd":0},"imported":true},{"id":"imp-2012-11-03","date":"2012-11-03","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":8,"chrizz":5,"freed":0,"mjd":5},"imported":true},{"id":"imp-2012-11-16","date":"2012-11-16","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":5,"chrizz":3,"freed":3,"mjd":5},"imported":true},{"id":"imp-2012-12-07","date":"2012-12-07","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":8,"chrizz":0,"freed":3,"mjd":5},"imported":true},{"id":"imp-2012-12-21","date":"2012-12-21","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":8,"chrizz":3,"freed":0,"mjd":5},"imported":true},{"id":"imp-2012-12-28","date":"2012-12-28","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":0,"chrizz":3,"freed":5,"mjd":7},"imported":true},{"id":"imp-2013-01-04","date":"2013-01-04","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":5,"chrizz":4,"freed":0,"mjd":5},"imported":true},{"id":"imp-2013-01-11","date":"2013-01-11","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":7,"chrizz":0,"freed":1,"mjd":5},"imported":true},{"id":"imp-2013-02-15","date":"2013-02-15","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":5,"chrizz":2,"freed":0,"mjd":1},"imported":true},{"id":"imp-2013-03-01","date":"2013-03-01","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":3,"chrizz":3,"freed":5,"mjd":2},"imported":true},{"id":"imp-2013-03-08","date":"2013-03-08","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":5,"chrizz":2,"freed":5,"mjd":0},"imported":true},{"id":"imp-2013-03-16","date":"2013-03-16","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":5,"chrizz":0,"freed":5,"mjd":0},"imported":true},{"id":"imp-2013-04-06","date":"2013-04-06","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":5,"chrizz":5,"freed":0,"mjd":4},"imported":true},{"id":"imp-2013-04-12","date":"2013-04-12","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":2,"chrizz":3,"freed":3,"mjd":2},"imported":true},{"id":"imp-2013-04-26","date":"2013-04-26","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":5,"chrizz":1,"freed":0,"mjd":2},"imported":true},{"id":"imp-2013-05-10","date":"2013-05-10","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":6,"chrizz":7,"freed":3,"mjd":3},"imported":true},{"id":"imp-2013-05-17","date":"2013-05-17","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":1,"chrizz":3,"freed":1,"mjd":5},"imported":true},{"id":"imp-2013-06-07","date":"2013-06-07","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":5,"chrizz":3,"freed":3,"mjd":4},"imported":true},{"id":"imp-2013-06-14","date":"2013-06-14","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":0,"chrizz":8,"freed":5,"mjd":5},"imported":true},{"id":"imp-2013-06-21","date":"2013-06-21","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":5,"chrizz":4,"freed":0,"mjd":5},"imported":true},{"id":"imp-2013-06-28","date":"2013-06-28","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":5,"chrizz":3,"freed":2,"mjd":5},"imported":true},{"id":"imp-2013-08-23","date":"2013-08-23","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":0,"chrizz":8,"freed":8,"mjd":3},"imported":true},{"id":"imp-2013-10-11","date":"2013-10-11","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":8,"chrizz":7,"freed":0,"mjd":5},"imported":true},{"id":"imp-2013-11-18","date":"2013-11-18","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":0,"chrizz":1,"freed":3,"mjd":3},"imported":true},{"id":"imp-2013-11-26","date":"2013-11-26","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":3,"chrizz":8,"freed":0,"mjd":4},"imported":true},{"id":"imp-2013-11-01","date":"2013-11-01","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":5,"chrizz":2,"freed":0,"mjd":5},"imported":true},{"id":"imp-2013-11-08","date":"2013-11-08","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":0,"chrizz":1,"freed":5,"mjd":6},"imported":true},{"id":"imp-2013-11-15","date":"2013-11-15","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":0,"chrizz":5,"freed":5,"mjd":3},"imported":true},{"id":"imp-2013-12-30","date":"2013-12-30","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":0,"chrizz":3,"freed":6,"mjd":5},"imported":true},{"id":"imp-2014-01-03","date":"2014-01-03","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":0,"chrizz":4,"freed":0,"mjd":4},"imported":true},{"id":"imp-2014-01-10","date":"2014-01-10","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":8,"chrizz":3,"freed":5,"mjd":5},"imported":true},{"id":"imp-2014-01-19","date":"2014-01-19","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":5,"chrizz":5,"freed":2,"mjd":4},"imported":true},{"id":"imp-2014-02-15","date":"2014-02-15","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":7,"chrizz":0,"freed":5,"mjd":5},"imported":true},{"id":"imp-2014-02-21","date":"2014-02-21","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":5,"chrizz":5,"freed":2,"mjd":1},"imported":true},{"id":"imp-2014-03-07","date":"2014-03-07","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":5,"chrizz":5,"freed":5,"mjd":0},"imported":true},{"id":"imp-2014-03-14","date":"2014-03-14","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":0,"chrizz":7,"freed":0,"mjd":1},"imported":true},{"id":"imp-2014-03-23","date":"2014-03-23","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":0,"chrizz":7,"freed":7,"mjd":7},"imported":true},{"id":"imp-2014-03-28","date":"2014-03-28","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":7,"chrizz":11,"freed":7,"mjd":0},"imported":true},{"id":"imp-2014-04-12","date":"2014-04-12","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":0,"chrizz":3,"freed":1,"mjd":1},"imported":true},{"id":"imp-2014-04-18","date":"2014-04-18","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":7,"chrizz":7,"freed":0,"mjd":7},"imported":true},{"id":"imp-2014-04-25","date":"2014-04-25","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":6,"chrizz":7,"freed":0,"mjd":3},"imported":true},{"id":"imp-2014-05-02","date":"2014-05-02","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":7,"chrizz":7,"freed":3,"mjd":0},"imported":true},{"id":"imp-2014-05-09","date":"2014-05-09","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":7,"chrizz":0,"freed":7,"mjd":7},"imported":true},{"id":"imp-2014-06-06","date":"2014-06-06","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":0,"chrizz":7,"freed":7,"mjd":7},"imported":true},{"id":"imp-2014-06-20","date":"2014-06-20","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":4,"chrizz":4,"freed":0,"mjd":1},"imported":true},{"id":"imp-2014-06-27","date":"2014-06-27","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":7,"chrizz":6,"freed":7,"mjd":0},"imported":true},{"id":"imp-2014-07-04","date":"2014-07-04","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":0,"chrizz":8,"freed":0,"mjd":1},"imported":true},{"id":"imp-2014-07-12","date":"2014-07-12","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":11,"chrizz":6,"freed":4,"mjd":0},"imported":true},{"id":"imp-2014-09-26","date":"2014-09-26","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":7,"chrizz":12,"freed":0,"mjd":7},"imported":true},{"id":"imp-2014-10-03","date":"2014-10-03","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":8,"chrizz":12,"freed":6,"mjd":0},"imported":true},{"id":"imp-2014-10-17","date":"2014-10-17","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":8,"chrizz":12,"freed":0,"mjd":7},"imported":true},{"id":"imp-2014-10-31","date":"2014-10-31","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":1,"chrizz":0,"freed":6,"mjd":7},"imported":true},{"id":"imp-2014-11-07","date":"2014-11-07","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":7,"chrizz":0,"freed":7,"mjd":7},"imported":true},{"id":"imp-2014-11-21","date":"2014-11-21","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":0,"chrizz":4,"freed":7,"mjd":11},"imported":true},{"id":"imp-2014-12-05","date":"2014-12-05","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":4,"chrizz":4,"freed":1,"mjd":0},"imported":true},{"id":"imp-2014-12-12","date":"2014-12-12","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":5,"chrizz":6,"freed":3,"mjd":3},"imported":true},{"id":"imp-2014-12-20","date":"2014-12-20","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":6,"chrizz":7,"freed":0,"mjd":4},"imported":true},{"id":"imp-2015-03-14","date":"2015-03-14","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":4,"chrizz":5,"freed":0,"mjd":3},"imported":true},{"id":"imp-2015-03-20","date":"2015-03-20","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":7,"chrizz":7,"freed":0,"mjd":4},"imported":true},{"id":"imp-2015-03-27","date":"2015-03-27","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":0,"chrizz":3,"freed":3,"mjd":2},"imported":true},{"id":"imp-2015-04-11","date":"2015-04-11","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":5,"chrizz":5,"freed":6,"mjd":7},"imported":true},{"id":"imp-2015-04-17","date":"2015-04-17","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":12,"chrizz":7,"freed":7,"mjd":0},"imported":true},{"id":"imp-2015-04-24","date":"2015-04-24","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":6,"chrizz":1,"freed":1,"mjd":0},"imported":true},{"id":"imp-2015-04-30","date":"2015-04-30","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":0,"chrizz":4,"freed":6,"mjd":7},"imported":true},{"id":"imp-2015-05-16","date":"2015-05-16","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":0,"chrizz":6,"freed":7,"mjd":1},"imported":true},{"id":"imp-2015-05-22","date":"2015-05-22","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":4,"chrizz":7,"freed":2,"mjd":0},"imported":true},{"id":"imp-2015-05-29","date":"2015-05-29","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":0,"chrizz":7,"freed":7,"mjd":7},"imported":true},{"id":"imp-2015-06-26","date":"2015-06-26","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":6,"chrizz":0,"freed":3,"mjd":3},"imported":true},{"id":"imp-2015-07-03","date":"2015-07-03","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":8,"chrizz":5,"freed":6,"mjd":3},"imported":true},{"id":"imp-2015-07-10","date":"2015-07-10","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":1,"chrizz":7,"freed":0,"mjd":7},"imported":true},{"id":"imp-2015-08-07","date":"2015-08-07","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":4,"chrizz":7,"freed":7,"mjd":0},"imported":true},{"id":"imp-2015-08-14","date":"2015-08-14","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":5,"chrizz":5,"freed":7,"mjd":7},"imported":true},{"id":"imp-2015-08-29","date":"2015-08-29","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":7,"chrizz":12,"freed":0,"mjd":7},"imported":true},{"id":"imp-2015-09-04","date":"2015-09-04","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":12,"chrizz":5,"freed":7,"mjd":9},"imported":true},{"id":"imp-2015-09-11","date":"2015-09-11","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":7,"chrizz":3,"freed":0,"mjd":7},"imported":true},{"id":"imp-2015-09-25","date":"2015-09-25","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":3,"chrizz":1,"freed":0,"mjd":7},"imported":true},{"id":"imp-2015-10-09","date":"2015-10-09","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":12,"chrizz":4,"freed":6,"mjd":0},"imported":true},{"id":"imp-2015-10-16","date":"2015-10-16","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":7,"chrizz":2,"freed":0,"mjd":1},"imported":true},{"id":"imp-2015-10-30","date":"2015-10-30","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":0,"chrizz":0,"freed":4,"mjd":7},"imported":true},{"id":"imp-2015-12-30","date":"2015-12-30","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":3,"chrizz":10,"freed":5,"mjd":0},"imported":true},{"id":"imp-2016-01-02","date":"2016-01-02","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":0,"chrizz":0,"freed":4,"mjd":7},"imported":true},{"id":"imp-2016-02-11","date":"2016-02-11","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":7,"chrizz":5,"freed":4,"mjd":7},"imported":true},{"id":"imp-2016-03-04","date":"2016-03-04","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":7,"chrizz":7,"freed":4,"mjd":5},"imported":true},{"id":"imp-2016-05-13","date":"2016-05-13","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":5,"chrizz":0,"freed":7,"mjd":7},"imported":true},{"id":"imp-2016-05-20","date":"2016-05-20","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":5,"chrizz":7,"freed":7,"mjd":5},"imported":true},{"id":"imp-2016-05-27","date":"2016-05-27","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":0,"chrizz":1,"freed":4,"mjd":7},"imported":true},{"id":"imp-2016-06-03","date":"2016-06-03","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":0,"chrizz":3,"freed":1,"mjd":0},"imported":true},{"id":"imp-2016-07-22","date":"2016-07-22","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":5,"chrizz":7,"freed":6,"mjd":0},"imported":true},{"id":"imp-2016-07-29","date":"2016-07-29","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":7,"chrizz":7,"freed":7,"mjd":3},"imported":true},{"id":"imp-2016-08-05","date":"2016-08-05","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":7,"chrizz":12,"freed":7,"mjd":0},"imported":true},{"id":"imp-2016-08-12","date":"2016-08-12","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":0,"chrizz":4,"freed":4,"mjd":7},"imported":true},{"id":"imp-2016-09-16","date":"2016-09-16","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":5,"chrizz":7,"freed":0,"mjd":11},"imported":true},{"id":"imp-2016-09-23","date":"2016-09-23","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":7,"chrizz":10,"freed":5,"mjd":0},"imported":true},{"id":"imp-2016-09-30","date":"2016-09-30","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":1,"chrizz":14,"freed":0,"mjd":7},"imported":true},{"id":"imp-2016-10-07","date":"2016-10-07","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":5,"chrizz":1,"freed":6,"mjd":0},"imported":true},{"id":"imp-2016-10-14","date":"2016-10-14","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":5,"chrizz":8,"freed":1,"mjd":3},"imported":true},{"id":"imp-2016-11-11","date":"2016-11-11","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":5,"chrizz":3,"freed":1,"mjd":2},"imported":true},{"id":"imp-2016-11-18","date":"2016-11-18","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":8,"chrizz":8,"freed":8,"mjd":0},"imported":true},{"id":"imp-2016-11-25","date":"2016-11-25","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":6,"chrizz":5,"freed":4,"mjd":8},"imported":true},{"id":"imp-2016-12-02","date":"2016-12-02","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":0,"chrizz":8,"freed":8,"mjd":8},"imported":true},{"id":"imp-2016-12-09","date":"2016-12-09","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":8,"chrizz":8,"freed":13,"mjd":5},"imported":true},{"id":"imp-2016-12-16","date":"2016-12-16","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":0,"chrizz":0,"freed":0,"mjd":0},"imported":true},{"id":"imp-2016-12-22","date":"2016-12-22","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":0,"chrizz":5,"freed":2,"mjd":1},"imported":true},{"id":"imp-2016-12-29","date":"2016-12-29","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":0,"chrizz":1,"freed":0,"mjd":8},"imported":true},{"id":"imp-2017-01-06","date":"2017-01-06","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":5,"chrizz":13,"freed":8,"mjd":0},"imported":true},{"id":"imp-2017-01-15","date":"2017-01-15","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":0,"chrizz":0,"freed":8,"mjd":8},"imported":true},{"id":"imp-2017-01-20","date":"2017-01-20","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":5,"chrizz":0,"freed":6,"mjd":8},"imported":true},{"id":"imp-2017-01-27","date":"2017-01-27","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":0,"chrizz":8,"freed":8,"mjd":8},"imported":true},{"id":"imp-2017-02-10","date":"2017-02-10","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":8,"chrizz":0,"freed":0,"mjd":8},"imported":true},{"id":"imp-2017-02-24","date":"2017-02-24","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":10,"chrizz":1,"freed":0,"mjd":8},"imported":true},{"id":"imp-2017-03-03","date":"2017-03-03","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":10,"chrizz":0,"freed":4,"mjd":4},"imported":true},{"id":"imp-2017-03-10","date":"2017-03-10","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":0,"chrizz":5,"freed":3,"mjd":8},"imported":true},{"id":"imp-2017-04-07","date":"2017-04-07","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":13,"chrizz":8,"freed":0,"mjd":6},"imported":true},{"id":"imp-2017-04-13","date":"2017-04-13","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":2,"chrizz":7,"freed":0,"mjd":8},"imported":true},{"id":"imp-2017-05-19","date":"2017-05-19","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":8,"chrizz":5,"freed":8,"mjd":4},"imported":true},{"id":"imp-2017-06-30","date":"2017-06-30","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":0,"chrizz":8,"freed":4,"mjd":5},"imported":true},{"id":"imp-2017-07-08","date":"2017-07-08","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":4,"chrizz":12,"freed":5,"mjd":0},"imported":true},{"id":"imp-2017-07-14","date":"2017-07-14","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":6,"chrizz":10,"freed":0,"mjd":8},"imported":true},{"id":"imp-2017-07-21","date":"2017-07-21","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":5,"chrizz":0,"freed":8,"mjd":8},"imported":true},{"id":"imp-2017-09-01","date":"2017-09-01","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":2,"chrizz":0,"freed":8,"mjd":8},"imported":true},{"id":"imp-2017-10-20","date":"2017-10-20","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":0,"chrizz":9,"freed":4,"mjd":6},"imported":true},{"id":"imp-2018-02-16","date":"2018-02-16","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":9,"chrizz":13,"freed":0,"mjd":13},"imported":true},{"id":"imp-2018-02-23","date":"2018-02-23","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":2,"chrizz":13,"freed":0,"mjd":8},"imported":true},{"id":"imp-2018-03-02","date":"2018-03-02","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":13,"chrizz":7,"freed":4,"mjd":0},"imported":true},{"id":"imp-2018-03-09","date":"2018-03-09","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":13,"chrizz":0,"freed":4,"mjd":6},"imported":true},{"id":"imp-2018-03-17","date":"2018-03-17","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":1,"chrizz":1,"freed":3,"mjd":0},"imported":true},{"id":"imp-2018-04-06","date":"2018-04-06","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":2,"chrizz":13,"freed":0,"mjd":3},"imported":true},{"id":"imp-2018-04-13","date":"2018-04-13","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":0,"chrizz":2,"freed":1,"mjd":8},"imported":true},{"id":"imp-2018-04-27","date":"2018-04-27","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":13,"chrizz":13,"freed":0,"mjd":7},"imported":true},{"id":"imp-2018-05-04","date":"2018-05-04","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":2,"chrizz":1,"freed":0,"mjd":5},"imported":true},{"id":"imp-2018-05-18","date":"2018-05-18","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":6,"chrizz":5,"freed":0,"mjd":8},"imported":true},{"id":"imp-2018-06-01","date":"2018-06-01","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":0,"chrizz":2,"freed":10,"mjd":10},"imported":true},{"id":"imp-2018-06-15","date":"2018-06-15","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":10,"chrizz":14,"freed":0,"mjd":6},"imported":true},{"id":"imp-2018-07-06","date":"2018-07-06","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":8,"chrizz":5,"freed":0,"mjd":2},"imported":true},{"id":"imp-2018-08-03","date":"2018-08-03","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":10,"chrizz":6,"freed":0,"mjd":15},"imported":true},{"id":"imp-2018-08-11","date":"2018-08-11","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":5,"chrizz":12,"freed":8,"mjd":10},"imported":true},{"id":"imp-2018-08-17","date":"2018-08-17","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":0,"chrizz":7,"freed":10,"mjd":9},"imported":true},{"id":"imp-2018-08-24","date":"2018-08-24","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":7,"chrizz":5,"freed":15,"mjd":2},"imported":true},{"id":"imp-2018-10-02","date":"2018-10-02","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":13,"chrizz":4,"freed":8,"mjd":0},"imported":true},{"id":"imp-2018-10-26","date":"2018-10-26","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":0,"chrizz":0,"freed":3,"mjd":3},"imported":true},{"id":"imp-2018-11-03","date":"2018-11-03","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":2,"chrizz":4,"freed":0,"mjd":10},"imported":true},{"id":"imp-2018-12-15","date":"2018-12-15","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":7,"chrizz":5,"freed":0,"mjd":3},"imported":true},{"id":"imp-2018-12-22","date":"2018-12-22","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":15,"chrizz":15,"freed":1,"mjd":0},"imported":true},{"id":"imp-2019-12-29","date":"2019-12-29","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":1,"chrizz":8,"freed":0,"mjd":5},"imported":true},{"id":"imp-2019-01-25","date":"2019-01-25","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":0,"chrizz":10,"freed":5,"mjd":11},"imported":true},{"id":"imp-2019-02-01","date":"2019-02-01","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":10,"chrizz":10,"freed":6,"mjd":0},"imported":true},{"id":"imp-2019-03-16","date":"2019-03-16","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":0,"chrizz":13,"freed":1,"mjd":0},"imported":true},{"id":"imp-2019-03-22","date":"2019-03-22","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":0,"chrizz":8,"freed":3,"mjd":5},"imported":true},{"id":"imp-2019-04-26","date":"2019-04-26","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":5,"chrizz":14,"freed":1,"mjd":5},"imported":true},{"id":"imp-2019-06-07","date":"2019-06-07","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":7,"chrizz":12,"freed":0,"mjd":9},"imported":true},{"id":"imp-2019-08-02","date":"2019-08-02","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":10,"chrizz":13,"freed":3,"mjd":0},"imported":true},{"id":"imp-2019-06-21","date":"2019-06-21","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":8,"chrizz":0,"freed":10,"mjd":4},"imported":true},{"id":"imp-2019-07-20","date":"2019-07-20","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":0,"chrizz":5,"freed":3,"mjd":8},"imported":true},{"id":"imp-2019-07-26","date":"2019-07-26","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":6,"chrizz":10,"freed":0,"mjd":15},"imported":true},{"id":"imp-2019-08-09","date":"2019-08-09","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":10,"chrizz":0,"freed":10,"mjd":10},"imported":true},{"id":"imp-2019-08-16","date":"2019-08-16","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":6,"chrizz":10,"freed":9,"mjd":0},"imported":true},{"id":"imp-2019-09-06","date":"2019-09-06","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":0,"chrizz":15,"freed":10,"mjd":10},"imported":true},{"id":"imp-2019-09-13","date":"2019-09-13","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":5,"chrizz":0,"freed":0,"mjd":0},"imported":true},{"id":"imp-2019-09-27","date":"2019-09-27","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":9,"chrizz":5,"freed":0,"mjd":5},"imported":true},{"id":"imp-2019-10-03","date":"2019-10-03","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":15,"chrizz":4,"freed":3,"mjd":0},"imported":true},{"id":"imp-2019-11-22","date":"2019-11-22","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":3,"chrizz":5,"freed":7,"mjd":3},"imported":true},{"id":"imp-2019-12-20","date":"2019-12-20","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":15,"chrizz":10,"freed":0,"mjd":15},"imported":true},{"id":"imp-2019-12-30","date":"2019-12-30","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":0,"chrizz":10,"freed":10,"mjd":10},"imported":true},{"id":"imp-2020-01-03","date":"2020-01-03","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":5,"chrizz":5,"freed":3,"mjd":7},"imported":true},{"id":"imp-2020-01-10","date":"2020-01-10","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":0,"chrizz":1,"freed":4,"mjd":9},"imported":true},{"id":"imp-2020-02-21","date":"2020-02-21","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":11,"chrizz":10,"freed":10,"mjd":0},"imported":true},{"id":"imp-2020-05-08","date":"2020-05-08","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":0,"chrizz":15,"freed":8,"mjd":10},"imported":true},{"id":"imp-2020-05-15","date":"2020-05-15","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":12,"chrizz":10,"freed":0,"mjd":10},"imported":true},{"id":"imp-2020-06-19","date":"2020-06-19","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":5,"chrizz":11,"freed":2,"mjd":10},"imported":true},{"id":"imp-2020-06-26","date":"2020-06-26","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":10,"chrizz":0,"freed":10,"mjd":14},"imported":true},{"id":"imp-2020-08-07","date":"2020-08-07","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":1,"chrizz":4,"freed":5,"mjd":0},"imported":true},{"id":"imp-2020-08-15","date":"2020-08-15","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":6,"chrizz":5,"freed":10,"mjd":0},"imported":true},{"id":"imp-2020-08-21","date":"2020-08-21","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":2,"chrizz":0,"freed":6,"mjd":10},"imported":true},{"id":"imp-2020-08-28","date":"2020-08-28","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":5,"chrizz":8,"freed":6,"mjd":8},"imported":true},{"id":"imp-2020-09-04","date":"2020-09-04","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":0,"chrizz":12,"freed":9,"mjd":10},"imported":true},{"id":"imp-2020-09-18","date":"2020-09-18","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":5,"chrizz":0,"freed":10,"mjd":10},"imported":true},{"id":"imp-2020-09-25","date":"2020-09-25","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":5,"chrizz":8,"freed":5,"mjd":11},"imported":true},{"id":"imp-2020-10-02","date":"2020-10-02","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":5,"chrizz":10,"freed":7,"mjd":10},"imported":true},{"id":"imp-2020-10-09","date":"2020-10-09","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":10,"chrizz":0,"freed":11,"mjd":10},"imported":true},{"id":"imp-2020-12-05","date":"2020-12-05","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":10,"chrizz":10,"freed":0,"mjd":6},"imported":true},{"id":"imp-2021-01-08","date":"2021-01-08","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":0,"chrizz":7,"freed":4,"mjd":10},"imported":true},{"id":"imp-2021-02-05","date":"2021-02-05","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":0,"chrizz":5,"freed":4,"mjd":8},"imported":true},{"id":"imp-2021-02-19","date":"2021-02-19","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":3,"chrizz":15,"freed":0,"mjd":7},"imported":true},{"id":"imp-2021-03-05","date":"2021-03-05","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":8,"chrizz":8,"freed":0,"mjd":6},"imported":true},{"id":"imp-2021-03-20","date":"2021-03-20","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":5,"chrizz":9,"freed":0,"mjd":2},"imported":true},{"id":"imp-2021-03-26","date":"2021-03-26","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":10,"chrizz":5,"freed":3,"mjd":1},"imported":true},{"id":"imp-2021-04-23","date":"2021-04-23","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":5,"chrizz":0,"freed":6,"mjd":0},"imported":true},{"id":"imp-2021-05-29","date":"2021-05-29","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":13,"chrizz":9,"freed":10,"mjd":0},"imported":true},{"id":"imp-2021-06-18","date":"2021-06-18","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":1,"chrizz":5,"freed":12,"mjd":9},"imported":true},{"id":"imp-2021-07-30","date":"2021-07-30","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":9,"chrizz":9,"freed":0,"mjd":0},"imported":true},{"id":"imp-2021-08-20","date":"2021-08-20","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":11,"chrizz":0,"freed":0,"mjd":8},"imported":true},{"id":"imp-2021-10-22","date":"2021-10-22","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":7,"chrizz":10,"freed":0,"mjd":10},"imported":true},{"id":"imp-2021-10-29","date":"2021-10-29","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":8,"chrizz":10,"freed":0,"mjd":5},"imported":true},{"id":"imp-2021-11-05","date":"2021-11-05","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":2,"chrizz":0,"freed":2,"mjd":10},"imported":true},{"id":"imp-2021-12-17","date":"2021-12-17","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":7,"chrizz":7,"freed":5,"mjd":4},"imported":true},{"id":"imp-2022-01-21","date":"2022-01-21","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":15,"chrizz":0,"freed":10,"mjd":10},"imported":true},{"id":"imp-2022-01-28","date":"2022-01-28","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":8,"chrizz":0,"freed":10,"mjd":10},"imported":true},{"id":"imp-2022-02-04","date":"2022-02-04","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":5,"chrizz":0,"freed":6,"mjd":6},"imported":true},{"id":"imp-2022-04-22","date":"2022-04-22","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":5,"chrizz":0,"freed":6,"mjd":7},"imported":true},{"id":"imp-2022-05-13","date":"2022-05-13","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":15,"chrizz":10,"freed":5,"mjd":9},"imported":true},{"id":"imp-2022-05-20","date":"2022-05-20","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":10,"chrizz":15,"freed":0,"mjd":10},"imported":true},{"id":"imp-2022-06-05","date":"2022-06-05","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":4,"chrizz":0,"freed":3,"mjd":8},"imported":true},{"id":"imp-2022-06-18","date":"2022-06-18","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":1,"chrizz":8,"freed":7,"mjd":0},"imported":true},{"id":"imp-2022-07-22","date":"2022-07-22","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":3,"chrizz":0,"freed":10,"mjd":2},"imported":true},{"id":"imp-2022-07-29","date":"2022-07-29","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":5,"chrizz":15,"freed":10,"mjd":8},"imported":true},{"id":"imp-2022-08-19","date":"2022-08-19","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":0,"chrizz":15,"freed":10,"mjd":10},"imported":true},{"id":"imp-2022-08-26","date":"2022-08-26","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":3,"chrizz":15,"freed":11,"mjd":0},"imported":true},{"id":"imp-2022-09-09","date":"2022-09-09","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":10,"chrizz":10,"freed":0,"mjd":10},"imported":true},{"id":"imp-2022-09-16","date":"2022-09-16","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":4,"chrizz":0,"freed":3,"mjd":7},"imported":true},{"id":"imp-2022-11-04","date":"2022-11-04","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":0,"chrizz":9,"freed":10,"mjd":6},"imported":true},{"id":"imp-2022-11-11","date":"2022-11-11","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":13,"chrizz":1,"freed":10,"mjd":0},"imported":true},{"id":"imp-2022-11-19","date":"2022-11-19","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":5,"chrizz":10,"freed":10,"mjd":11},"imported":true},{"id":"imp-2022-12-16","date":"2022-12-16","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":1,"chrizz":0,"freed":3,"mjd":7},"imported":true},{"id":"imp-2023-01-06","date":"2023-01-06","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":13,"chrizz":0,"freed":10,"mjd":11},"imported":true},{"id":"imp-2023-01-13","date":"2023-01-13","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":7,"chrizz":7,"freed":0,"mjd":9},"imported":true},{"id":"imp-2023-01-20","date":"2023-01-20","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":10,"chrizz":0,"freed":4,"mjd":5},"imported":true},{"id":"imp-2023-02-10","date":"2023-02-10","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":8,"chrizz":7,"freed":5,"mjd":10},"imported":true},{"id":"imp-2023-03-17","date":"2023-03-17","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":12,"chrizz":0,"freed":0,"mjd":6},"imported":true},{"id":"imp-2023-04-01","date":"2023-04-01","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":12,"chrizz":0,"freed":0,"mjd":6},"imported":true},{"id":"imp-2023-04-21","date":"2023-04-21","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":9,"chrizz":4,"freed":0,"mjd":5},"imported":true},{"id":"imp-2023-04-28","date":"2023-04-28","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":4,"chrizz":10,"freed":0,"mjd":7},"imported":true},{"id":"imp-2023-05-26","date":"2023-05-26","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":0,"chrizz":0,"freed":5,"mjd":1},"imported":true},{"id":"imp-2023-06-02","date":"2023-06-02","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":12,"chrizz":16,"freed":13,"mjd":30},"imported":true},{"id":"imp-2023-06-09","date":"2023-06-09","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":12,"chrizz":5,"freed":6,"mjd":13},"imported":true},{"id":"imp-2023-06-30","date":"2023-06-30","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":1,"chrizz":2,"freed":0,"mjd":1},"imported":true},{"id":"imp-2023-07-07","date":"2023-07-07","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":9,"chrizz":0,"freed":1,"mjd":5},"imported":true},{"id":"imp-2023-07-14","date":"2023-07-14","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":3,"chrizz":6,"freed":5,"mjd":0},"imported":true},{"id":"imp-2023-07-28","date":"2023-07-28","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":10,"chrizz":8,"freed":0,"mjd":6},"imported":true},{"id":"imp-2023-08-04","date":"2023-08-04","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":5,"chrizz":5,"freed":9,"mjd":2},"imported":true},{"id":"imp-2023-08-11","date":"2023-08-11","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":10,"chrizz":13,"freed":0,"mjd":7},"imported":true},{"id":"imp-2023-09-22","date":"2023-09-22","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":10,"chrizz":3,"freed":10,"mjd":0},"imported":true},{"id":"imp-2023-10-07","date":"2023-10-07","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":10,"chrizz":3,"freed":4,"mjd":0},"imported":true},{"id":"imp-2023-10-27","date":"2023-10-27","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":0,"chrizz":7,"freed":2,"mjd":3},"imported":true},{"id":"imp-2023-11-17","date":"2023-11-17","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":12,"chrizz":0,"freed":10,"mjd":10},"imported":true},{"id":"imp-2023-12-02","date":"2023-12-02","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":10,"chrizz":5,"freed":6,"mjd":0},"imported":true},{"id":"imp-2023-12-16","date":"2023-12-16","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":10,"chrizz":15,"freed":0,"mjd":10},"imported":true},{"id":"imp-2023-12-30","date":"2023-12-30","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":15,"chrizz":2,"freed":10,"mjd":0},"imported":true},{"id":"imp-2024-01-06","date":"2024-01-06","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":10,"chrizz":15,"freed":0,"mjd":10},"imported":true},{"id":"imp-2024-01-19","date":"2024-01-19","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":1,"chrizz":6,"freed":2,"mjd":0},"imported":true},{"id":"imp-2024-02-17","date":"2024-02-17","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":2,"chrizz":5,"freed":0,"mjd":2},"imported":true},{"id":"imp-2024-03-01","date":"2024-03-01","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":6,"chrizz":8,"freed":0,"mjd":10},"imported":true},{"id":"imp-2024-03-22","date":"2024-03-22","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":8,"chrizz":0,"freed":0,"mjd":3},"imported":true},{"id":"imp-2024-04-05","date":"2024-04-05","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":10,"chrizz":5,"freed":0,"mjd":10},"imported":true},{"id":"imp-2024-04-12","date":"2024-04-12","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":6,"chrizz":10,"freed":10,"mjd":0},"imported":true},{"id":"imp-2024-04-26","date":"2024-04-26","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":14,"chrizz":7,"freed":10,"mjd":0},"imported":true},{"id":"imp-2024-05-03","date":"2024-05-03","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":10,"chrizz":0,"freed":3,"mjd":4},"imported":true},{"id":"imp-2024-05-24","date":"2024-05-24","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":10,"chrizz":14,"freed":0,"mjd":10},"imported":true},{"id":"imp-2024-05-31","date":"2024-05-31","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":15,"chrizz":11,"freed":14,"mjd":35},"imported":true},{"id":"imp-2024-06-07","date":"2024-06-07","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":12,"chrizz":10,"freed":0,"mjd":10},"imported":true},{"id":"imp-2024-07-05","date":"2024-07-05","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":5,"chrizz":1,"freed":1,"mjd":5},"imported":true},{"id":"imp-2024-08-02","date":"2024-08-02","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":2,"chrizz":0,"freed":10,"mjd":10},"imported":true},{"id":"imp-2024-08-09","date":"2024-08-09","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":0,"chrizz":7,"freed":3,"mjd":9},"imported":true},{"id":"imp-2024-08-16","date":"2024-08-16","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":0,"chrizz":12,"freed":0,"mjd":10},"imported":true},{"id":"imp-2024-11-08","date":"2024-11-08","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":0,"chrizz":4,"freed":10,"mjd":10},"imported":true},{"id":"imp-2024-11-15","date":"2024-11-15","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":0,"chrizz":2,"freed":2,"mjd":10},"imported":true},{"id":"imp-2024-12-13","date":"2024-12-13","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":10,"chrizz":9,"freed":0,"mjd":9},"imported":true},{"id":"imp-2024-12-20","date":"2024-12-20","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":3,"chrizz":15,"freed":0,"mjd":10},"imported":true},{"id":"imp-2025-01-24","date":"2025-01-24","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":0,"chrizz":10,"freed":10,"mjd":10},"imported":true},{"id":"imp-2025-02-01","date":"2025-02-01","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":8,"chrizz":15,"freed":0,"mjd":10},"imported":true},{"id":"imp-2025-02-15","date":"2025-02-15","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":9,"chrizz":5,"freed":10,"mjd":1},"imported":true},{"id":"imp-2025-03-07","date":"2025-03-07","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":15,"chrizz":5,"freed":6,"mjd":0},"imported":true},{"id":"imp-2025-03-14","date":"2025-03-14","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":0,"chrizz":7,"freed":9,"mjd":7},"imported":true},{"id":"imp-2025-03-22","date":"2025-03-22","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":5,"chrizz":10,"freed":10,"mjd":7},"imported":true},{"id":"imp-2025-04-04","date":"2025-04-04","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":5,"chrizz":8,"freed":7,"mjd":8},"imported":true},{"id":"imp-2025-04-18","date":"2025-04-18","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":2,"chrizz":0,"freed":6,"mjd":1},"imported":true},{"id":"imp-2025-05-02","date":"2025-05-02","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":10,"chrizz":15,"freed":0,"mjd":10},"imported":true},{"id":"imp-2025-05-09","date":"2025-05-09","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":5,"chrizz":6,"freed":8,"mjd":5},"imported":true},{"id":"imp-2025-05-16","date":"2025-05-16","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":7,"chrizz":0,"freed":2,"mjd":8},"imported":true},{"id":"imp-2025-05-24","date":"2025-05-24","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":0,"chrizz":2,"freed":6,"mjd":2},"imported":true},{"id":"imp-2025-06-06","date":"2025-06-06","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":5,"chrizz":10,"freed":0,"mjd":10},"imported":true},{"id":"imp-2025-07-11","date":"2025-07-11","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":0,"chrizz":4,"freed":9,"mjd":10},"imported":true},{"id":"imp-2025-07-18","date":"2025-07-18","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":0,"chrizz":10,"freed":8,"mjd":10},"imported":true},{"id":"imp-2025-07-25","date":"2025-07-25","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":1,"chrizz":7,"freed":0,"mjd":9},"imported":true},{"id":"imp-2025-09-05","date":"2025-09-05","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":11,"chrizz":10,"freed":0,"mjd":7},"imported":true},{"id":"imp-2025-09-12","date":"2025-09-12","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":0,"chrizz":10,"freed":10,"mjd":0},"imported":true},{"id":"imp-2025-11-14","date":"2025-11-14","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":2,"chrizz":6,"freed":5,"mjd":10},"imported":true},{"id":"imp-2025-11-28","date":"2025-11-28","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":0,"chrizz":7,"freed":8,"mjd":8},"imported":true},{"id":"imp-2025-12-27","date":"2025-12-27","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":9,"chrizz":10,"freed":0,"mjd":8},"imported":true},{"id":"imp-2026-01-02","date":"2026-01-02","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":0,"chrizz":10,"freed":10,"mjd":10},"imported":true},{"id":"imp-2026-01-10","date":"2026-01-10","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":3,"chrizz":0,"freed":1,"mjd":10},"imported":true},{"id":"imp-2026-03-07","date":"2026-03-07","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":8,"chrizz":5,"freed":3,"mjd":10},"imported":true},{"id":"imp-2026-03-13","date":"2026-03-13","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":6,"chrizz":15,"freed":0,"mjd":1},"imported":true},{"id":"imp-2026-03-20","date":"2026-03-20","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":12,"chrizz":10,"freed":0,"mjd":5},"imported":true},{"id":"imp-2026-04-11","date":"2026-04-11","seatOrder":["gee","chrizz","freed","mjd"],"games":[],"bockQ":[],"settled":true,"kasseBeitrag":{"gee":8,"chrizz":4,"freed":6,"mjd":0},"imported":true}];
+
+function seedHistory() {
+  const key = 'doko-seeded-v2';
+  if (localStorage.getItem(key)) return;
+  const seedMap = {};
+  HISTORY_SEED.forEach(s => seedMap[s.id] = s);
+  let kasseDiff = 0;
+  // Patch existing imported sessions that have wrong/missing kasseBeitrag
+  S.sessions.forEach(s => {
+    if (s.imported && seedMap[s.id]) {
+      const oldSum = Object.values(s.kasseBeitrag || {}).reduce((a,b)=>a+b, 0);
+      const newKB = seedMap[s.id].kasseBeitrag;
+      const newSum = Object.values(newKB).reduce((a,b)=>a+b, 0);
+      s.kasseBeitrag = newKB;
+      kasseDiff += newSum - oldSum;
+    }
+  });
+  // Add sessions not yet in localStorage
+  HISTORY_SEED.forEach(ses => {
+    if (!S.sessions.find(s => s.id === ses.id)) {
+      S.sessions.push(ses);
+      kasseDiff += Object.values(ses.kasseBeitrag).reduce((a,b)=>a+b, 0);
+    }
+  });
+  S.kasseSaldo += kasseDiff;
+  save();
+  localStorage.setItem(key, '1');
+}
+
+seedHistory();
+render();
+initSwipes();
+
+// ── App Icon (Queen of Hearts) ──────────────────
+(function() {
+  try {
+    const s = 512;
+    const cv = Object.assign(document.createElement('canvas'), {width:s, height:s});
+    const x = cv.getContext('2d');
+    x.fillStyle = '#1C1C1E';
+    x.beginPath(); x.roundRect(0,0,s,s,114); x.fill();
+    x.fillStyle = '#FFFFFF';
+    x.beginPath(); x.roundRect(72,56,368,400,44); x.fill();
+    x.fillStyle = '#FF3B30';
+    x.font = '900 300px -apple-system,Arial'; x.textAlign='center'; x.textBaseline='alphabetic';
+    x.fillText('Q', 256, 340);
+    x.font = '900 110px Georgia,serif';
+    x.fillText('♥', 256, 448);
+    const png = cv.toDataURL('image/png');
+    const lnk = Object.assign(document.createElement('link'), {rel:'apple-touch-icon', href:png});
+    document.head.appendChild(lnk);
+  } catch(e){}
+})();
+</script>
+</body>
+</html>
