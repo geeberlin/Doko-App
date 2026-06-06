@@ -281,6 +281,22 @@ function getSoloStats() {
   return stats;
 }
 
+function getSpielStats() {
+  const stats = {};
+  PIDS.forEach(p => stats[p] = {solo: 0, soloWon: 0, hochzeit: 0, armut: 0, vergeben: 0});
+  S.rounds.forEach(r => {
+    if (r.spieltyp === 'solo' && r.soloPlayer) {
+      stats[r.soloPlayer].solo++;
+      if (r.soloWon) stats[r.soloPlayer].soloWon++;
+    }
+    if ((r.spieltyp === 'hochzeit' || r.spieltyp === 'armut') && r.hauptPlayer)
+      stats[r.hauptPlayer][r.spieltyp]++;
+    if (r.spieltyp === 'vergeben' && r.vergebenPlayer)
+      stats[r.vergebenPlayer].vergeben++;
+  });
+  return stats;
+}
+
 // ── SETTLEMENT ─────────────────────────────────────────────────────────────
 function calcSettlement() {
   const totals = getCurrentTotals();
@@ -528,6 +544,9 @@ function renderSettlement(app) {
         <button class="btn btn-primary" onclick="sendOrCopyMail()">📧 Mail senden</button>
       </div>
       <div class="settle-section" style="margin-top:0;padding-top:0">
+        <button class="btn btn-sec" onclick="shareWhatsApp()">💬 WhatsApp teilen</button>
+      </div>
+      <div class="settle-section" style="margin-top:0;padding-top:0">
         <button class="btn btn-sec" onclick="copyMailText()">📋 Text kopieren</button>
       </div>
       <div class="settle-section" style="margin-top:0">
@@ -541,6 +560,13 @@ function sendOrCopyMail() {
   const mailBody = generateMail({totals, maxScore, payments});
   const mailto = `mailto:?subject=Doko%20${encodeURIComponent(new Date().toLocaleDateString('de-DE'))}&body=${encodeURIComponent(mailBody)}`;
   window.location.href = mailto;
+}
+
+function shareWhatsApp() {
+  const {totals, payments} = calcSettlement();
+  const text = generateMailB({totals, payments});
+  const url = `https://wa.me/?text=${encodeURIComponent(text)}`;
+  window.open(url, '_blank');
 }
 
 function copyMailText() {
@@ -564,7 +590,7 @@ function generateMail({totals, maxScore, payments}) {
 
   // Sort players by score for Endstand
   const ranked = [...PIDS].sort((a,b) => totals[b] - totals[a]);
-  const medals = ['🥇','🥈','🥉','💀'];
+  const medals = ['🥇','🥈','🥉','🤡'];
 
   const p = s => s > 0 ? '+' + s : String(s);
   const pad = (s, n) => String(s).padStart(n);
@@ -603,43 +629,91 @@ function generateMail({totals, maxScore, payments}) {
   const totRow = PIDS.map(pid => pad(p(totals[pid]), 7)).join('');
   lines.push(`${'     '}${totRow}`);
 
+  const spielStats = getSpielStats();
+  const rankedByPay = [...PIDS].sort((a,b) => payments[b].total - payments[a].total);
+  const HR = '━'.repeat(34);
+
   // ── Endstand ──
   lines.push('');
-  lines.push('━'.repeat(34));
+  lines.push(HR);
   lines.push('');
   lines.push('🏆  ENDSTAND');
   lines.push('');
   ranked.forEach((pid, i) => {
     const st = soloStats[pid];
     const soloStr = (st.won + st.lost) > 0
-      ? '  ' + '★'.repeat(st.won) + '☆'.repeat(st.lost)
+      ? '  ' + '⭐'.repeat(st.won) + '☆'.repeat(st.lost)
       : '';
     lines.push(`${medals[i]}  ${padL(PL[pid].name, 12)} ${pad(p(totals[pid]), 5)} Pkt${soloStr}`);
   });
 
+  // ── Statistik ──
+  const statLines = [];
+  const soloP = PIDS.filter(pid => spielStats[pid].solo > 0);
+  if (soloP.length) statLines.push('⭐  Solo      ' + soloP.map(pid =>
+    `${PL[pid].s} ${'⭐'.repeat(spielStats[pid].soloWon)}${'☆'.repeat(spielStats[pid].solo - spielStats[pid].soloWon)}`).join('  '));
+  const hP = PIDS.filter(pid => spielStats[pid].hochzeit > 0);
+  if (hP.length) statLines.push('👰  Hochzeit  ' + hP.map(pid =>
+    `${PL[pid].s} ${'👰'.repeat(spielStats[pid].hochzeit)}`).join('  '));
+  const aP = PIDS.filter(pid => spielStats[pid].armut > 0);
+  if (aP.length) statLines.push('🙄  Armut     ' + aP.map(pid =>
+    `${PL[pid].s} ${'🙄'.repeat(spielStats[pid].armut)}`).join('  '));
+  const vP = PIDS.filter(pid => spielStats[pid].vergeben > 0);
+  if (vP.length) statLines.push('🤡  Vergeben  ' + vP.map(pid =>
+    `${PL[pid].s} ${'🤡'.repeat(spielStats[pid].vergeben)}`).join('  '));
+  if (statLines.length) {
+    lines.push('');
+    lines.push(HR);
+    lines.push('');
+    lines.push('📈  STATISTIK');
+    lines.push('');
+    statLines.forEach(l => lines.push('    ' + l));
+  }
+
   // ── Kasse ──
   lines.push('');
-  lines.push('━'.repeat(34));
+  lines.push(HR);
   lines.push('');
   lines.push('💸  KASSE');
   lines.push('');
-  PIDS.forEach(pid => {
+  rankedByPay.forEach(pid => {
     const pay = payments[pid];
-    const det = [];
-    if (pay.scorePay > 0) det.push(`${pay.scorePay}€ Punkte`);
-    if (pay.soloExtra > 0) det.push('5€ kein Solo');
-    const amtStr = pay.total > 0 ? `${pay.total} €` : '—';
-    const detStr = det.length ? `  (${det.join(' + ')})` : '';
-    lines.push(`    ${padL(PL[pid].name, 12)} ${pad(amtStr, 6)}${detStr}`);
+    const crown = pay.total === 0 ? ' 👑' : '';
+    const amtStr = `${pay.total} €`;
+    lines.push(`    ${padL(PL[pid].name, 12)} ${pad(amtStr, 5)}${crown}`);
   });
   lines.push('');
   lines.push(`    ${'─'.repeat(20)}`);
   lines.push(`    ${'Gesamttopf'.padEnd(12)} ${totalPot} €`);
 
   lines.push('');
-  lines.push('━'.repeat(34));
+  lines.push(HR);
   lines.push('🃏  Gute Nacht!');
 
+  return lines.join('\n');
+}
+
+function generateMailB({totals, payments}) {
+  const date = new Date().toLocaleDateString('de-DE', {day:'2-digit', month:'2-digit'});
+  const ranked = [...PIDS].sort((a,b) => totals[b] - totals[a]);
+  const rankedByPay = [...PIDS].sort((a,b) => payments[b].total - payments[a].total);
+  const medals = ['🥇','🥈','🥉','🤡'];
+  const soloStats = getSoloStats();
+  const lines = [];
+  lines.push(`🃏 Doko · ${date}`);
+  lines.push('');
+  ranked.forEach((pid, i) => {
+    const st = soloStats[pid];
+    const stars = '⭐'.repeat(st.won) + '☆'.repeat(st.lost);
+    const v = totals[pid];
+    lines.push(`${medals[i]} ${PL[pid].name} ${v > 0 ? '+' : ''}${v}${stars ? ' ' + stars : ''}`);
+  });
+  lines.push('');
+  lines.push('💸 Kasse:');
+  rankedByPay.forEach(pid => {
+    const pay = payments[pid];
+    lines.push(`   ${PL[pid].name} → ${pay.total === 0 ? '0 € 👑' : pay.total + ' €'}`);
+  });
   return lines.join('\n');
 }
 
@@ -655,6 +729,7 @@ function openAddRound() {
     winners: [],
     basePoints: 0,
     vergebenPlayer: null,
+    hauptPlayer: null,
   };
   renderAddSheet();
   openSheet();
@@ -769,7 +844,12 @@ function renderAddSheet() {
     <div class="f-sec">
       <div class="f-label">Gewinner · 2 wählen</div>
       <div class="p-chips">${pChips}</div>
-    </div>`}
+    </div>
+    ${(form.spieltyp === 'hochzeit' || form.spieltyp === 'armut') ? `
+    <div class="f-sec">
+      <div class="f-label">${form.spieltyp === 'hochzeit' ? '👰 Wer hatte die Hochzeit?' : '🙄 Wer hatte die Armut?'}</div>
+      <div class="p-chips">${PIDS.map(pid => `<button class="p-chip ${form.hauptPlayer===pid?'on':''}" onclick="setHauptPlayer('${pid}')">${PL[pid].s}<span>${PL[pid].name}</span></button>`).join('')}</div>
+    </div>` : ''}`}
 
     ${!isVergeben ? `
     <div class="f-sec">
@@ -795,8 +875,10 @@ function setSpieltyp(t) {
   form.spieltyp = t;
   form.winners  = [];
   form.soloPlayer = null;
+  form.hauptPlayer = null;
   renderAddSheet();
 }
+function setHauptPlayer(pid) { form.hauptPlayer = pid; renderAddSheet(); }
 
 function setSoloPlayer(pid) { form.soloPlayer = pid; renderAddSheet(); }
 function setSoloWon(val) { form.soloWon = val; renderAddSheet(); }
@@ -840,6 +922,7 @@ function confirmRound() {
     winners:        [...form.winners],
     basePoints:     form.basePoints,
     vergebenPlayer: form.vergebenPlayer,
+    hauptPlayer:    form.hauptPlayer,
     delta,
     dealerIndex: didx,
   });
