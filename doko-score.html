@@ -1,0 +1,806 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Doko · Score</title>
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Doko">
+<meta name="theme-color" content="#1C1C1E">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+:root{
+  --bg:#F2F2F7;--surface:#FFF;--surface2:#F2F2F7;--surface3:#E5E5EA;
+  --primary:#007AFF;--label:#000;--label2:rgba(60,60,67,.6);--label3:rgba(60,60,67,.3);
+  --sep:rgba(60,60,67,.18);--red:#FF3B30;--green:#34C759;--orange:#FF9500;--purple:#AF52DE;
+  --r:12px;--r-sm:8px;--sh:0 1px 3px rgba(0,0,0,.08),0 1px 2px rgba(0,0,0,.05);
+}
+@media(prefers-color-scheme:dark){:root{
+  --bg:#000;--surface:#1C1C1E;--surface2:#2C2C2E;--surface3:#3A3A3C;
+  --label:#FFF;--label2:rgba(235,235,245,.6);--label3:rgba(235,235,245,.25);
+  --sep:rgba(84,84,88,.55);
+}}
+body{font-family:-apple-system,BlinkMacSystemFont,system-ui,sans-serif;background:var(--bg);color:var(--label);min-height:100dvh;-webkit-font-smoothing:antialiased}
+#app{max-width:480px;margin:0 auto;min-height:100dvh}
+
+/* ── NAV ── */
+.nav{position:sticky;top:0;z-index:90;background:rgba(242,242,247,.88);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border-bottom:1px solid var(--sep);padding:10px 16px;padding-top:calc(10px + env(safe-area-inset-top));display:flex;align-items:center;gap:8px;min-height:calc(48px + env(safe-area-inset-top))}
+@media(prefers-color-scheme:dark){.nav{background:rgba(28,28,30,.88)}}
+.nav h1{flex:1;font-size:17px;font-weight:600;text-align:center;letter-spacing:-.01em}
+.nav-btn{font-size:15px;font-weight:500;color:var(--primary);cursor:pointer;padding:6px 0;white-space:nowrap;border:none;background:none;font-family:inherit}
+.nav-btn.bold{font-weight:700}
+.nav-btn.danger{color:var(--red)}
+
+/* ── SCOREBOARD ── */
+.scoreboard{display:grid;grid-template-columns:repeat(4,1fr);background:var(--surface);border-bottom:2px solid var(--sep);padding:10px 4px 14px}
+.sb-col{display:flex;flex-direction:column;align-items:center;gap:3px}
+.sb-name{font-size:11px;font-weight:700;color:var(--label2);text-transform:uppercase;letter-spacing:.06em;display:flex;align-items:center;gap:3px;line-height:1}
+.sb-dealer{width:15px;height:15px;border-radius:50%;background:var(--primary);color:#fff;font-size:9px;font-weight:800;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0}
+.sb-solo-wrap{display:flex;gap:3px;justify-content:center;flex-wrap:wrap;min-height:20px;align-items:center}
+.sb-solo-won{display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;border-radius:50%;background:#FF9500;color:#fff;font-size:11px;line-height:1}
+.sb-solo-lost{font-size:13px;color:var(--label3);line-height:1}
+.sb-pts{font-size:26px;font-weight:800;font-variant-numeric:tabular-nums;letter-spacing:-1px;line-height:1.1}
+
+/* ── WENDE ── */
+.wende-divider{display:grid;grid-template-columns:48px 1fr;align-items:center;padding:0 8px 0 0;background:var(--surface2)}
+.wende-line{height:1px;background:var(--primary);opacity:.35}
+.wende-label{grid-column:1;padding:3px 4px 3px 10px;font-size:9px;font-weight:700;color:var(--primary);text-transform:uppercase;letter-spacing:.08em;opacity:.7}
+
+/* ── ROUND TABLE ── */
+.round-header{display:grid;grid-template-columns:48px repeat(4,1fr);background:var(--surface2);border-bottom:1px solid var(--sep);padding:6px 0}
+.round-header-cell{text-align:center;font-size:11px;font-weight:700;color:var(--label3);text-transform:uppercase;letter-spacing:.04em}
+.round-header-cell:first-child{text-align:left;padding-left:10px}
+.round-row{display:grid;grid-template-columns:48px repeat(4,1fr);border-bottom:1px solid var(--sep);position:relative;background:var(--surface);cursor:pointer;min-height:62px}
+.round-row:active{background:var(--surface2)}
+.round-row.bock{border-left:3px solid var(--orange)}
+.round-row.bock .round-meta{padding-left:7px}
+.round-meta{padding:8px 4px 8px 10px;display:flex;flex-direction:column;justify-content:center;align-items:flex-start;gap:3px}
+.round-num{font-size:10px;color:var(--label3);font-weight:600;line-height:1}
+.round-sp{font-size:12px;font-weight:700;color:var(--label2);line-height:1.2}
+.round-cell{padding:8px 2px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px}
+.round-cum{font-size:16px;font-weight:800;font-variant-numeric:tabular-nums;letter-spacing:-.4px;line-height:1}
+.round-delta{font-size:11px;font-variant-numeric:tabular-nums;color:var(--label3);line-height:1}
+.solo-badge{line-height:1}
+
+/* ── EMPTY ── */
+.empty{text-align:center;padding:64px 20px;color:var(--label2);font-size:16px}
+.empty-icon{font-size:48px;margin-bottom:12px}
+
+/* ── FAB ── */
+.fab{position:fixed;bottom:calc(22px + env(safe-area-inset-bottom));right:max(20px,calc((100vw - 480px)/2 + 20px));width:58px;height:58px;border-radius:50%;background:var(--primary);color:#fff;border:none;cursor:pointer;font-size:32px;line-height:1;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 20px rgba(0,122,255,.45);transition:transform .1s,box-shadow .1s;z-index:100}
+.fab:active{transform:scale(.9);box-shadow:0 2px 8px rgba(0,122,255,.3)}
+.fab-spacer{height:calc(100px + env(safe-area-inset-bottom))}
+
+/* ── SHEET ── */
+.overlay{display:none;position:fixed;inset:0;z-index:200;background:rgba(0,0,0,.45);align-items:flex-end}
+.overlay.open{display:flex}
+.sheet{background:var(--surface);border-radius:20px 20px 0 0;width:100%;max-height:94dvh;overflow-y:auto;padding-bottom:calc(28px + env(safe-area-inset-bottom))}
+.sheet-handle{width:36px;height:4px;background:var(--sep);border-radius:2px;margin:12px auto 2px}
+.sheet-title{font-size:20px;font-weight:700;padding:8px 20px 4px;display:flex;align-items:baseline;gap:10px}
+.sheet-subtitle{font-size:14px;font-weight:400;color:var(--label2)}
+
+/* ── FORM ── */
+.f-sec{padding:16px 20px 0}
+.f-label{font-size:12px;font-weight:700;color:var(--label2);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px}
+
+/* ── SPIELTYP GRID ── */
+.st-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+.st-btn{padding:11px 4px;border:1.5px solid var(--sep);border-radius:var(--r-sm);background:var(--surface);color:var(--label);font-size:13px;font-weight:600;cursor:pointer;text-align:center;transition:all .15s;line-height:1.3;font-family:inherit}
+.st-btn.on{border-color:var(--primary);background:rgba(0,122,255,.1);color:var(--primary)}
+
+/* ── TOGGLE ── */
+.t-row{display:flex;align-items:center;gap:12px;padding:0}
+.t-lbl{flex:1;font-size:16px}
+.toggle{position:relative;width:51px;height:31px;flex-shrink:0}
+.toggle input{opacity:0;position:absolute;width:0;height:0}
+.t-track{position:absolute;inset:0;border-radius:999px;background:var(--sep);transition:background .2s;cursor:pointer}
+.toggle input:checked+.t-track{background:var(--orange)}
+.t-track::after{content:'';position:absolute;top:2px;left:2px;width:27px;height:27px;border-radius:50%;background:#fff;box-shadow:0 2px 4px rgba(0,0,0,.25);transition:transform .2s}
+.toggle input:checked+.t-track::after{transform:translateX(20px)}
+
+/* ── PLAYER CHIPS ── */
+.p-chips{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.p-chip{padding:13px 4px;border:2px solid var(--sep);border-radius:var(--r-sm);background:var(--surface);color:var(--label);font-size:16px;font-weight:700;cursor:pointer;text-align:center;transition:all .15s;font-family:inherit;line-height:1.2}
+.p-chip span{display:block;font-size:10px;font-weight:500;color:var(--label2);margin-top:2px}
+.p-chip.on{border-color:var(--primary);background:rgba(0,122,255,.1);color:var(--primary)}
+.p-chip.on span{color:var(--primary)}
+.p-chip:active{transform:scale(.95)}
+
+/* ── SEG ── */
+.seg{display:flex;background:var(--surface2);border-radius:var(--r-sm);padding:2px;gap:2px}
+.seg-btn{flex:1;padding:9px 6px;border:none;background:transparent;border-radius:6px;font-size:14px;font-weight:500;color:var(--label2);cursor:pointer;transition:all .15s;text-align:center;font-family:inherit}
+.seg-btn.on{background:var(--surface);color:var(--label);font-weight:700;box-shadow:var(--sh)}
+
+/* ── STEPPER ── */
+.stepper{display:flex;align-items:center;gap:0;border:1.5px solid var(--sep);border-radius:var(--r-sm);overflow:hidden;background:var(--surface)}
+.step-btn{width:54px;height:64px;border:none;background:var(--surface2);color:var(--primary);font-size:26px;font-weight:300;cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-family:inherit;transition:background .1s}
+.step-btn:active{background:var(--surface3)}
+.step-val{flex:1;text-align:center;font-size:40px;font-weight:800;font-variant-numeric:tabular-nums;letter-spacing:-1px;color:var(--label);line-height:1;padding:12px 0}
+.preset-btns{display:flex;gap:6px;margin-top:8px;flex-wrap:wrap}
+.preset-btn{padding:8px 14px;border:1.5px solid var(--sep);border-radius:999px;background:transparent;font-size:14px;font-weight:600;cursor:pointer;color:var(--label2);font-family:inherit;transition:all .12s}
+.preset-btn.on{border-color:var(--primary);color:var(--primary);background:rgba(0,122,255,.08)}
+.preset-btn:active{background:var(--surface3)}
+
+/* ── PREVIEW ── */
+.preview{background:var(--surface2);border-radius:var(--r);padding:13px 8px;display:grid;grid-template-columns:repeat(4,1fr);gap:4px;margin-top:0}
+.prev-col{display:flex;flex-direction:column;align-items:center;gap:3px}
+.prev-name{font-size:11px;font-weight:700;color:var(--label2);text-transform:uppercase}
+.prev-pts{font-size:22px;font-weight:800;font-variant-numeric:tabular-nums;letter-spacing:-.5px;line-height:1}
+
+/* ── BTN ── */
+.btn{display:flex;align-items:center;justify-content:center;gap:8px;padding:15px;border-radius:999px;font-size:17px;font-weight:700;border:none;cursor:pointer;width:100%;transition:opacity .12s,transform .1s;font-family:inherit;text-decoration:none}
+.btn:active{opacity:.75;transform:scale(.97)}
+.btn-primary{background:var(--primary);color:#fff}
+.btn-danger{background:var(--red);color:#fff}
+.btn-sec{background:var(--surface2);color:var(--label)}
+.btn:disabled{opacity:.35;pointer-events:none}
+
+/* ── SETUP ── */
+.setup-wrap{padding:20px}
+.setup-card{background:var(--surface);border-radius:var(--r);box-shadow:var(--sh);overflow:hidden;margin-bottom:8px}
+.setup-row{display:flex;align-items:center;padding:13px 16px;border-bottom:1px solid var(--sep);gap:12px;cursor:default}
+.setup-row:last-child{border-bottom:none}
+.setup-name{flex:1;font-size:17px}
+.pos-btns{display:flex;gap:5px}
+.pos-btn{width:34px;height:34px;border:1.5px solid var(--sep);border-radius:8px;background:var(--surface);color:var(--label2);font-size:14px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;font-family:inherit;transition:all .15s}
+.pos-btn.on{background:var(--primary);border-color:var(--primary);color:#fff}
+.pos-btn:active{opacity:.7}
+.section-lbl{font-size:12.5px;font-weight:700;color:var(--label2);text-transform:uppercase;letter-spacing:.06em;padding:16px 4px 8px}
+
+/* ── SETTLEMENT ── */
+.settle-section{padding:0 16px 16px}
+.settle-lbl{font-size:12px;font-weight:700;color:var(--label2);text-transform:uppercase;letter-spacing:.06em;padding:0 4px;margin-bottom:8px}
+.settle-card{background:var(--surface);border-radius:var(--r);box-shadow:var(--sh);overflow:hidden}
+.settle-row{display:flex;align-items:center;padding:13px 16px;border-bottom:1px solid var(--sep);gap:12px}
+.settle-row:last-child{border-bottom:none}
+.settle-name{flex:1}
+.settle-player{font-size:17px}
+.settle-detail{font-size:12px;color:var(--label2);margin-top:2px}
+.settle-amt{font-size:22px;font-weight:800;font-variant-numeric:tabular-nums}
+.settle-pts{font-size:22px;font-weight:700;font-variant-numeric:tabular-nums}
+
+/* ── COLORS ── */
+.c-pos{color:var(--green)}.c-neg{color:var(--red)}.c-zero{color:var(--label2)}.c-warn{color:var(--orange)}
+
+/* ── DELETE CONFIRM ── */
+.del-bar{display:flex;gap:8px;padding:8px 16px;background:var(--surface2);border-top:1px solid var(--sep)}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<div id="overlay" class="overlay">
+  <div id="sheet" class="sheet">
+    <div class="sheet-handle"></div>
+    <div id="sheet-body"></div>
+  </div>
+</div>
+
+<script>
+'use strict';
+
+// ── CONSTANTS ──────────────────────────────────────────────────────────────
+const PIDS = ['gee','mjd','chrizz','freed'];
+const PL = {
+  gee:    {id:'gee',    name:'Gerald',    s:'G'},
+  mjd:    {id:'mjd',    name:'Michael',   s:'M'},
+  chrizz: {id:'chrizz', name:'Christian', s:'C'},
+  freed:  {id:'freed',  name:'Andreas',   s:'F'},
+};
+
+const SP_KEYS = ['normal','hochzeit','armut','solo','vergeben'];
+const SP = {
+  normal:   {l:'Normal',   isSolo:false},
+  hochzeit: {l:'Hochzeit', isSolo:false},
+  armut:    {l:'Armut',    isSolo:false},
+  solo:     {l:'Solo',     isSolo:true},
+  vergeben: {l:'Vergeben', isSolo:false},
+};
+
+// ── STATE ──────────────────────────────────────────────────────────────────
+function mkState() {
+  return {
+    setupDone: false,
+    seatOrder: ['gee','mjd','chrizz','freed'], // index = position-1, pos 0 gives first
+    bockNext: false,
+    rounds: [],
+    view: 'main',
+  };
+}
+
+let S = (() => {
+  try { const r = localStorage.getItem('doko-score-v1'); if (r) return JSON.parse(r); } catch(e){}
+  return mkState();
+})();
+const save = () => localStorage.setItem('doko-score-v1', JSON.stringify(S));
+
+// ── SCORING ────────────────────────────────────────────────────────────────
+function calcDelta(spieltyp, bock, winners, basePoints, soloPlayer, soloWon, vergebenPlayer) {
+  const d = {}; PIDS.forEach(p => d[p] = 0);
+  if (spieltyp === 'vergeben') {
+    if (!vergebenPlayer) return d;
+    PIDS.forEach(p => d[p] = p === vergebenPlayer ? -21 : 7);
+    return d;
+  }
+  if (!basePoints) return d;
+  const m = bock ? 2 : 1;
+  if (spieltyp === 'solo') {
+    const sign = soloWon ? 1 : -1;
+    PIDS.forEach(p => {
+      d[p] = p === soloPlayer ? sign * basePoints * 3 * m : -sign * basePoints * m;
+    });
+  } else {
+    const losers = PIDS.filter(p => !winners.includes(p));
+    winners.forEach(p => d[p] =  basePoints * m);
+    losers.forEach(p =>  d[p] = -basePoints * m);
+  }
+  return d;
+}
+
+// Compute dealer index from round history (so delete works correctly)
+function currentDealerIdx() {
+  let idx = 0; // position 1 always deals first
+  S.rounds.forEach(r => {
+    if (r.spieltyp !== 'vergeben' && r.spieltyp !== 'solo') {
+      idx = (idx + 1) % 4;
+    }
+  });
+  return idx;
+}
+
+function getCurrentTotals() {
+  const t = {}; PIDS.forEach(p => t[p] = 0);
+  S.rounds.forEach(r => PIDS.forEach(p => t[p] += r.delta[p]));
+  return t;
+}
+
+// Returns cumulative totals after each round
+function getCumulatives() {
+  const cum = {}; PIDS.forEach(p => cum[p] = 0);
+  return S.rounds.map(r => {
+    PIDS.forEach(p => cum[p] += r.delta[p]);
+    return {...cum};
+  });
+}
+
+function getPlayedSolo() {
+  const s = new Set();
+  S.rounds.forEach(r => { if (r.spieltyp === 'solo' && r.soloPlayer) s.add(r.soloPlayer); });
+  return s;
+}
+
+function getSoloStats() {
+  const stats = {};
+  PIDS.forEach(p => stats[p] = {won: 0, lost: 0});
+  S.rounds.forEach(r => {
+    if (r.spieltyp === 'solo' && r.soloPlayer) {
+      if (r.soloWon) stats[r.soloPlayer].won++;
+      else stats[r.soloPlayer].lost++;
+    }
+  });
+  return stats;
+}
+
+// ── SETTLEMENT ─────────────────────────────────────────────────────────────
+function calcSettlement() {
+  const totals = getCurrentTotals();
+  const maxScore = Math.max(...PIDS.map(p => totals[p]));
+  const playedSolo = getPlayedSolo();
+
+  const payments = {};
+  PIDS.forEach(p => {
+    const diff = maxScore - totals[p];
+    let scorePay = 0;
+    if (diff > 6) {
+      scorePay = Math.round(diff / 10); // kaufmännisch (1pt=10ct), cap 10€
+      scorePay = Math.min(scorePay, 10);
+    }
+    const noSolo = !playedSolo.has(p);
+    const soloExtra = noSolo ? 5 : 0;
+    payments[p] = {diff, scorePay, noSolo, soloExtra, total: scorePay + soloExtra};
+  });
+  return {totals, maxScore, payments};
+}
+
+// ── SPIELTYP LABEL ─────────────────────────────────────────────────────────
+function spLabel(r) {
+  if (r.spieltyp === 'vergeben') return r.vergebenPlayer ? 'V·' + PL[r.vergebenPlayer].s : 'V';
+  const pts = r.basePoints * (r.bock ? 2 : 1);
+  const b = r.bock ? 'B' : '';
+  if (r.spieltyp === 'solo') return `${b}${pts}/${pts * 3}`;
+  return `${b}${pts}`;
+}
+
+// ── RENDER ─────────────────────────────────────────────────────────────────
+function render() {
+  const app = document.getElementById('app');
+  if (!S.setupDone) { renderSetup(app); return; }
+  if (S.view === 'settlement') { renderSettlement(app); return; }
+  renderMain(app);
+}
+
+// ── SETUP ──────────────────────────────────────────────────────────────────
+function renderSetup(app) {
+  app.innerHTML = `
+    <div class="nav"><h1>Neuer Abend</h1></div>
+    <div class="setup-wrap">
+      <div class="section-lbl">Reihenfolge · Platz 1 gibt zuerst</div>
+      <div class="setup-card">
+        ${PIDS.map(pid => {
+          const pos = S.seatOrder.indexOf(pid) + 1; // 1-based
+          return `<div class="setup-row">
+            <div class="setup-name">${PL[pid].name}</div>
+            <div class="pos-btns">
+              ${[1,2,3,4].map(n => `<button class="pos-btn ${pos === n ? 'on' : ''}" onclick="assignPos('${pid}',${n})">${n}</button>`).join('')}
+            </div>
+          </div>`;
+        }).join('')}
+      </div>
+      <div style="color:var(--label2);font-size:13px;padding:8px 4px">Platz 1 gibt das erste Spiel.</div>
+      <div style="margin-top:16px">
+        <button class="btn btn-primary" onclick="startEvening()">Abend starten</button>
+      </div>
+    </div>`;
+}
+
+function assignPos(pid, newPos) {
+  const newIdx = newPos - 1;
+  const oldIdx = S.seatOrder.indexOf(pid);
+  const displaced = S.seatOrder[newIdx];
+  S.seatOrder[newIdx] = pid;
+  S.seatOrder[oldIdx] = displaced;
+  save(); render();
+}
+
+function startEvening() { S.setupDone = true; save(); render(); }
+
+// ── MAIN ───────────────────────────────────────────────────────────────────
+function renderMain(app) {
+  const totals = getCurrentTotals();
+  const cums   = getCumulatives();
+  const dealerPid = S.seatOrder[currentDealerIdx()];
+  const soloStats = getSoloStats();
+  const bockLabel = S.bockNext ? ' 🟠' : '';
+
+  // Scoreboard
+  const sb = PIDS.map(pid => {
+    const v   = totals[pid];
+    const cls = v > 0 ? 'c-pos' : v < 0 ? 'c-neg' : 'c-zero';
+    const isDealer = dealerPid === pid;
+    const st = soloStats[pid];
+    const soloBadges = '<span class="sb-solo-wrap">'
+      + '<span class="sb-solo-won">'.repeat(0).slice(0,0) // placeholder
+      + Array(st.won).fill('<span class="sb-solo-won">★</span>').join('')
+      + Array(st.lost).fill('<span class="sb-solo-lost">☆</span>').join('')
+      + '</span>';
+    return `<div class="sb-col">
+      <div class="sb-name">
+        ${isDealer ? '<span class="sb-dealer">G</span>' : ''}
+        ${PL[pid].s}
+      </div>
+      ${soloBadges}
+      <div class="sb-pts ${cls}">${v > 0 ? '+' : ''}${v}</div>
+    </div>`;
+  }).join('');
+
+  // Round rows
+  let rounds = '';
+  if (S.rounds.length === 0) {
+    rounds = `<div class="empty"><div class="empty-icon">🃏</div>Noch keine Runden</div>`;
+  } else {
+    const header = `<div class="round-header">
+      <div class="round-header-cell">Sp.</div>
+      ${PIDS.map(pid => `<div class="round-header-cell">${PL[pid].s}</div>`).join('')}
+    </div>`;
+
+    const rows = S.rounds.map((r, idx) => {
+      const cum = cums[idx];
+      const wendeDiv = (idx > 0 && r.dealerIndex === 0)
+        ? `<div class="wende-divider"><span class="wende-label">Wende</span><div class="wende-line"></div></div>`
+        : '';
+      return wendeDiv + `<div class="round-row ${r.bock ? 'bock' : ''}" onclick="rowTap(${idx})">
+        <div class="round-meta">
+          <span class="round-num">${idx + 1}</span>
+          <span class="round-sp">${spLabel(r)}</span>
+        </div>
+        ${PIDS.map(pid => {
+          const v = cum[pid];
+          const d = r.delta[pid];
+          const vcls = v > 0 ? 'c-pos' : v < 0 ? 'c-neg' : 'c-zero';
+          const dcls = d > 0 ? 'c-pos' : d < 0 ? 'c-neg' : '';
+          let badge = '';
+          if (r.spieltyp === 'solo' && r.soloPlayer === pid) {
+            badge = r.soloWon
+              ? `<span class="solo-badge" style="display:inline-flex;align-items:center;justify-content:center;width:14px;height:14px;border-radius:50%;background:#FF9500;color:#fff;font-size:9px">★</span>`
+              : `<span class="solo-badge" style="color:var(--label3);font-size:12px">☆</span>`;
+          }
+          return `<div class="round-cell">
+            <span class="round-cum ${vcls}">${v > 0 ? '+' : ''}${v}</span>
+            <span class="round-delta ${dcls}">${d !== 0 ? (d > 0 ? '+' : '') + d : '—'}</span>
+            ${badge}
+          </div>`;
+        }).join('')}
+      </div>`;
+    }).join('');
+
+    rounds = header + rows;
+  }
+
+  app.innerHTML = `
+    <div class="nav">
+      <button class="nav-btn danger" onclick="resetPrompt()">Reset</button>
+      <h1>Doko${bockLabel}</h1>
+      <button class="nav-btn bold" onclick="showSettlement()">Abrechnen</button>
+    </div>
+    <div class="scoreboard">${sb}</div>
+    ${rounds}
+    <div class="fab-spacer"></div>
+    <button class="fab" onclick="openAddRound()">+</button>`;
+}
+
+// Tap on round row → show delete option
+let deleteIdx = -1;
+function rowTap(idx) {
+  deleteIdx = idx;
+  renderDeleteSheet(idx);
+  openSheet();
+}
+
+function renderDeleteSheet(idx) {
+  const r = S.rounds[idx];
+  const geber = PL[S.seatOrder[r.dealerIndex]].name;
+  document.getElementById('sheet-body').innerHTML = `
+    <div style="padding:8px 20px 24px">
+      <div style="font-size:20px;font-weight:700;margin-bottom:4px">Runde ${idx + 1}</div>
+      <div style="font-size:15px;color:var(--label2);margin-bottom:24px">${SP[r.spieltyp].l}${r.bock ? ' · Bock' : ''} · ${geber} gibt</div>
+      <button class="btn btn-danger" onclick="deleteRound(${idx})">Runde löschen</button>
+      <button class="btn btn-sec" style="margin-top:10px" onclick="closeSheet()">Abbrechen</button>
+    </div>`;
+}
+
+function deleteRound(idx) {
+  S.rounds.splice(idx, 1);
+  // Recalculate bockNext from last round
+  S.bockNext = false;
+  if (S.rounds.length > 0) {
+    const last = S.rounds[S.rounds.length - 1];
+    if (last.bock && last.spieltyp === 'solo') S.bockNext = true;
+  }
+  save(); closeSheet(); render();
+}
+
+// ── SETTLEMENT ─────────────────────────────────────────────────────────────
+function showSettlement() { S.view = 'settlement'; save(); render(); }
+
+function renderSettlement(app) {
+  const {totals, maxScore, payments} = calcSettlement();
+  const totalPot = PIDS.reduce((s, p) => s + payments[p].total, 0);
+
+  const endRows = PIDS.map(p => {
+    const v = totals[p];
+    const cls = v > 0 ? 'c-pos' : v < 0 ? 'c-neg' : 'c-zero';
+    return `<div class="settle-row">
+      <div class="settle-name"><div class="settle-player">${PL[p].name}</div></div>
+      <div class="settle-pts ${cls}">${v > 0 ? '+' : ''}${v}</div>
+    </div>`;
+  }).join('');
+
+  const payRows = PIDS.map(p => {
+    const pay = payments[p];
+    const details = [];
+    if (pay.scorePay > 0) details.push(`${pay.scorePay}€ Punkte`);
+    if (pay.soloExtra > 0) details.push(`5€ kein Solo`);
+    return `<div class="settle-row">
+      <div class="settle-name">
+        <div class="settle-player">${PL[p].name}</div>
+        <div class="settle-detail">${details.join(' + ') || 'nichts zu zahlen'}</div>
+      </div>
+      <div class="settle-amt ${pay.total > 0 ? 'c-neg' : 'c-zero'}">${pay.total > 0 ? pay.total + ' €' : '—'}</div>
+    </div>`;
+  }).join('');
+
+  const mailBody = generateMail({totals, maxScore, payments});
+  const mailto = `mailto:?subject=Doko%20${encodeURIComponent(new Date().toLocaleDateString('de-DE'))}&body=${encodeURIComponent(mailBody)}`;
+
+  app.innerHTML = `
+    <div class="nav">
+      <button class="nav-btn" onclick="S.view='main';save();render()">← Zurück</button>
+      <h1>Abrechnung</h1>
+    </div>
+    <div style="padding-top:16px">
+      <div class="settle-section">
+        <div class="settle-lbl">Endpunkte · Referenz ${maxScore > 0 ? '+' : ''}${maxScore}</div>
+        <div class="settle-card">${endRows}</div>
+      </div>
+      <div class="settle-section">
+        <div class="settle-lbl">Zahlungen</div>
+        <div class="settle-card">${payRows}</div>
+      </div>
+      <div class="settle-section">
+        <div class="settle-card">
+          <div class="settle-row">
+            <div class="settle-name"><div class="settle-player">Gesamttopf</div></div>
+            <div class="settle-amt">${totalPot} €</div>
+          </div>
+        </div>
+      </div>
+      <div class="settle-section">
+        <button class="btn btn-primary" onclick="sendOrCopyMail()">📧 Mail senden</button>
+      </div>
+      <div class="settle-section" style="margin-top:0;padding-top:0">
+        <button class="btn btn-sec" onclick="copyMailText()">📋 Text kopieren</button>
+      </div>
+      <div class="settle-section" style="margin-top:0">
+        <button class="btn btn-danger" onclick="resetPrompt()">Abend beenden & Reset</button>
+      </div>
+    </div>`;
+}
+
+function sendOrCopyMail() {
+  const {totals, maxScore, payments} = calcSettlement();
+  const mailBody = generateMail({totals, maxScore, payments});
+  const mailto = `mailto:?subject=Doko%20${encodeURIComponent(new Date().toLocaleDateString('de-DE'))}&body=${encodeURIComponent(mailBody)}`;
+  window.location.href = mailto;
+}
+
+function copyMailText() {
+  const {totals, maxScore, payments} = calcSettlement();
+  const mailBody = generateMail({totals, maxScore, payments});
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(mailBody).then(() => {
+      alert('Text kopiert — in Mail-App einfügen.');
+    });
+  } else {
+    // Fallback: show text in prompt so user can copy manually
+    prompt('Text markieren und kopieren:', mailBody);
+  }
+}
+
+function generateMail({totals, maxScore, payments}) {
+  const date = new Date().toLocaleDateString('de-DE', {day:'2-digit', month:'2-digit', year:'numeric'});
+  const cums = getCumulatives();
+  const lines = [];
+  lines.push(`Doppelkopf · ${date}`);
+  lines.push('');
+  lines.push(`Sp.  | ${PIDS.map(p => PL[p].s.padStart(6)).join(' ')}`);
+  lines.push('─────┼' + '───────'.repeat(4));
+  S.rounds.forEach((r, i) => {
+    const cum = cums[i];
+    const sp = spLabel(r).padEnd(4);
+    const scores = PIDS.map(p => String(cum[p] > 0 ? '+' + cum[p] : cum[p]).padStart(6));
+    lines.push(`${sp} │ ${scores.join(' ')}`);
+  });
+  lines.push('');
+  lines.push('── Abrechnung ──');
+  PIDS.forEach(p => {
+    const pay = payments[p];
+    const det = [];
+    if (pay.scorePay > 0) det.push(`${pay.scorePay}€ Punkte`);
+    if (pay.soloExtra > 0) det.push('5€ Solopflicht');
+    const total = pay.total > 0 ? `zahlt ${pay.total}€` : 'zahlt nichts';
+    lines.push(`${PL[p].name.padEnd(12)} ${String(totals[p] > 0 ? '+' + totals[p] : totals[p]).padStart(5)} Pkt  →  ${total}${det.length ? '  (' + det.join(' + ') + ')' : ''}`);
+  });
+  lines.push('');
+  lines.push(`Topf: ${PIDS.reduce((s,p) => s + payments[p].total, 0)}€`);
+  return lines.join('\n');
+}
+
+// ── SHEET / ADD ROUND ──────────────────────────────────────────────────────
+let form = {};
+
+function openAddRound() {
+  form = {
+    spieltyp: 'normal',
+    bock: S.bockNext,
+    soloPlayer: null,
+    soloWon: true,
+    winners: [],
+    basePoints: 0,
+    vergebenPlayer: null,
+  };
+  renderAddSheet();
+  openSheet();
+}
+
+function openSheet() {
+  const el = document.getElementById('overlay');
+  el.classList.add('open');
+  el.onclick = e => { if (e.target === el) closeSheet(); };
+}
+
+function closeSheet() {
+  document.getElementById('overlay').classList.remove('open');
+}
+
+function renderAddSheet() {
+  const rndNum = S.rounds.length + 1;
+  const dealerPid = S.seatOrder[currentDealerIdx()];
+  const isSolo     = form.spieltyp === 'solo';
+  const isVergeben = form.spieltyp === 'vergeben';
+
+  // Preview
+  let preview = null;
+  if (!isVergeben && form.basePoints > 0) {
+    if (isSolo && form.soloPlayer) {
+      preview = calcDelta('solo', form.bock, [], form.basePoints, form.soloPlayer, form.soloWon);
+    } else if (!isSolo && form.winners.length === 2) {
+      preview = calcDelta(form.spieltyp, form.bock, form.winners, form.basePoints, null, null);
+    }
+  }
+
+  const canConfirm = (isVergeben && form.vergebenPlayer !== null) || (
+    !isVergeben && form.basePoints > 0 &&
+    (isSolo ? form.soloPlayer !== null : form.winners.length === 2)
+  );
+
+  const stBtns = SP_KEYS.map(k =>
+    `<button class="st-btn ${form.spieltyp === k ? 'on' : ''} ${k === 'vergeben' ? 'vergeben' : ''}" onclick="setSpieltyp('${k}')">${SP[k].l}</button>`
+  ).join('');
+
+  const pChips = PIDS.map(pid =>
+    `<button class="p-chip ${form.winners.includes(pid) ? 'on' : ''}" onclick="toggleWinner('${pid}')">${PL[pid].s}<span>${PL[pid].name}</span></button>`
+  ).join('');
+
+  const soloChips = PIDS.map(pid =>
+    `<button class="p-chip ${form.soloPlayer === pid ? 'on' : ''}" onclick="setSoloPlayer('${pid}')">${PL[pid].s}<span>${PL[pid].name}</span></button>`
+  ).join('');
+
+  const previewHtml = preview ? `
+    <div class="f-sec">
+      <div class="f-label">Vorschau</div>
+      <div class="preview">
+        ${PIDS.map(pid => {
+          const d = preview[pid];
+          const cls = d > 0 ? 'c-pos' : d < 0 ? 'c-neg' : 'c-zero';
+          return `<div class="prev-col">
+            <span class="prev-name">${PL[pid].s}</span>
+            <span class="prev-pts ${cls}">${d > 0 ? '+' : ''}${d}</span>
+          </div>`;
+        }).join('')}
+      </div>
+    </div>` : '';
+
+  document.getElementById('sheet-body').innerHTML = `
+    <div class="sheet-title">Runde ${rndNum} <span class="sheet-subtitle">${PL[dealerPid].name} gibt</span></div>
+
+    <div class="f-sec">
+      <div class="f-label">Spieltyp</div>
+      <div class="st-grid">${stBtns}</div>
+    </div>
+
+    ${!isVergeben ? `
+    <div class="f-sec" style="padding-top:12px">
+      <div class="t-row">
+        <span class="t-lbl">🟠 Bock</span>
+        <label class="toggle">
+          <input type="checkbox" ${form.bock ? 'checked' : ''} onchange="toggleBock(this.checked)">
+          <span class="t-track"></span>
+        </label>
+      </div>
+    </div>` : ''}
+
+    ${isVergeben ? `
+    <div class="f-sec">
+      <div class="f-label">Wer hat sich vergeben?</div>
+      <div class="p-chips">
+        ${PIDS.map(pid => `<button class="p-chip ${form.vergebenPlayer===pid?'on':''}" onclick="setVergebenPlayer('${pid}')">${PL[pid].s}<span>${PL[pid].name}</span></button>`).join('')}
+      </div>
+      ${form.vergebenPlayer ? `<div style="margin-top:10px;background:var(--surface2);border-radius:var(--r);padding:12px 16px">
+        <div class="preview">
+          ${PIDS.map(pid => {
+            const d = pid === form.vergebenPlayer ? -21 : 7;
+            return `<div class="prev-col">
+              <span class="prev-name">${PL[pid].s}</span>
+              <span class="prev-pts ${d>0?'c-pos':'c-neg'}">${d>0?'+':''}${d}</span>
+            </div>`;
+          }).join('')}
+        </div>
+      </div>` : ''}
+    </div>` : isSolo ? `
+    <div class="f-sec">
+      <div class="f-label">Solo-Spieler</div>
+      <div class="p-chips">${soloChips}</div>
+    </div>
+    <div class="f-sec">
+      <div class="f-label">Ergebnis</div>
+      <div class="seg">
+        <button class="seg-btn ${form.soloWon ? 'on' : ''}" onclick="setSoloWon(true)">Gewonnen</button>
+        <button class="seg-btn ${!form.soloWon ? 'on' : ''}" onclick="setSoloWon(false)">Verloren</button>
+      </div>
+    </div>` : `
+    <div class="f-sec">
+      <div class="f-label">Gewinner · 2 wählen</div>
+      <div class="p-chips">${pChips}</div>
+    </div>`}
+
+    ${!isVergeben ? `
+    <div class="f-sec">
+      <div class="f-label">Basispunkte${form.bock ? ' · gespielt: ' + (form.basePoints * 2) : ''}</div>
+      <div class="stepper">
+        <button class="step-btn" onclick="stepPoints(-1)">−</button>
+        <div class="step-val">${form.basePoints || 0}</div>
+        <button class="step-btn" onclick="stepPoints(1)">+</button>
+      </div>
+      <div class="preset-btns">
+        ${[0,2,4,8,10,12].map(n => `<button class="preset-btn ${form.basePoints===n?'on':''}" onclick="setPoints(${n})">${n}</button>`).join('')}
+      </div>
+    </div>` : ''}
+
+    ${previewHtml}
+
+    <div class="f-sec" style="padding-bottom:8px;margin-top:16px">
+      <button class="btn btn-primary" ${canConfirm ? '' : 'disabled'} onclick="confirmRound()">Bestätigen</button>
+    </div>`;
+}
+
+function setSpieltyp(t) {
+  form.spieltyp = t;
+  form.winners  = [];
+  form.soloPlayer = null;
+  renderAddSheet();
+}
+
+function setSoloPlayer(pid) { form.soloPlayer = pid; renderAddSheet(); }
+function setSoloWon(val) { form.soloWon = val; renderAddSheet(); }
+function toggleBock(val) { form.bock = val; renderAddSheet(); }
+function setVergebenPlayer(pid) { form.vergebenPlayer = pid; renderAddSheet(); }
+
+function toggleWinner(pid) {
+  if (form.winners.includes(pid)) {
+    form.winners = form.winners.filter(p => p !== pid);
+  } else if (form.winners.length < 2) {
+    form.winners.push(pid);
+  }
+  renderAddSheet();
+}
+
+function setPoints(n) {
+  form.basePoints = Math.max(0, n);
+  renderAddSheet();
+}
+
+function stepPoints(dir) {
+  form.basePoints = Math.max(0, (form.basePoints || 0) + dir);
+  renderAddSheet();
+}
+
+function confirmRound() {
+  const didx = currentDealerIdx();
+  const delta = calcDelta(
+    form.spieltyp, form.bock,
+    form.winners, form.basePoints,
+    form.soloPlayer, form.soloWon,
+    form.vergebenPlayer
+  );
+
+  S.rounds.push({
+    id: Date.now(),
+    spieltyp:       form.spieltyp,
+    bock:           form.bock,
+    soloPlayer:     form.soloPlayer,
+    soloWon:        form.soloWon,
+    winners:        [...form.winners],
+    basePoints:     form.basePoints,
+    vergebenPlayer: form.vergebenPlayer,
+    delta,
+    dealerIndex: didx,
+  });
+
+  // Bock carry-over: solo during bock → repeat bock
+  S.bockNext = (form.bock && form.spieltyp === 'solo');
+
+  save(); closeSheet(); render();
+}
+
+// ── RESET ──────────────────────────────────────────────────────────────────
+function resetPrompt() {
+  if (!confirm('Abend zurücksetzen? Alle Daten werden gelöscht.')) return;
+  S = mkState();
+  save(); closeSheet(); render();
+}
+
+// ── INIT ───────────────────────────────────────────────────────────────────
+render();
+</script>
+</body>
+</html>
