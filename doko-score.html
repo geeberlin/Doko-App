@@ -557,31 +557,89 @@ function copyMailText() {
 }
 
 function generateMail({totals, maxScore, payments}) {
-  const date = new Date().toLocaleDateString('de-DE', {day:'2-digit', month:'2-digit', year:'numeric'});
+  const date = new Date().toLocaleDateString('de-DE', {weekday:'long', day:'2-digit', month:'long', year:'numeric'});
   const cums = getCumulatives();
+  const soloStats = getSoloStats();
+  const totalPot = PIDS.reduce((s,p) => s + payments[p].total, 0);
+
+  // Sort players by score for Endstand
+  const ranked = [...PIDS].sort((a,b) => totals[b] - totals[a]);
+  const medals = ['🥇','🥈','🥉','💀'];
+
+  const p = s => s > 0 ? '+' + s : String(s);
+  const pad = (s, n) => String(s).padStart(n);
+  const padL = (s, n) => String(s).padEnd(n);
+
   const lines = [];
-  lines.push(`Doppelkopf · ${date}`);
+
+  // ── Header ──
+  lines.push('🃏  D O P P E L K O P F');
+  lines.push(`    ${date}`);
+  lines.push(`    ${S.rounds.length} Spiele`);
   lines.push('');
-  lines.push(`Sp.  | ${PIDS.map(p => PL[p].s.padStart(6)).join(' ')}`);
-  lines.push('─────┼' + '───────'.repeat(4));
+  lines.push('━'.repeat(34));
+
+  // ── Spielverlauf ──
+  lines.push('');
+  lines.push('📊  SPIELVERLAUF');
+  lines.push('');
+  const header = `      ${PIDS.map(pid => pad(PL[pid].s, 7)).join('')}`;
+  lines.push(header);
+  lines.push('    ' + '─'.repeat(29));
+
+  let wendeCount = 0;
   S.rounds.forEach((r, i) => {
     const cum = cums[i];
-    const sp = spLabel(r).padEnd(4);
-    const scores = PIDS.map(p => String(cum[p] > 0 ? '+' + cum[p] : cum[p]).padStart(6));
-    lines.push(`${sp} │ ${scores.join(' ')}`);
+    if (i > 0 && r.dealerIndex === 0) {
+      wendeCount++;
+      lines.push(`    ·· Neue Runde ${wendeCount + 1} ··`);
+    }
+    const sp = padL(spLabel(r), 5);
+    const scores = PIDS.map(pid => pad(p(cum[pid]), 7)).join('');
+    lines.push(`${sp}${scores}`);
   });
+
+  lines.push('    ' + '─'.repeat(29));
+  const totRow = PIDS.map(pid => pad(p(totals[pid]), 7)).join('');
+  lines.push(`${'     '}${totRow}`);
+
+  // ── Endstand ──
   lines.push('');
-  lines.push('── Abrechnung ──');
-  PIDS.forEach(p => {
-    const pay = payments[p];
+  lines.push('━'.repeat(34));
+  lines.push('');
+  lines.push('🏆  ENDSTAND');
+  lines.push('');
+  ranked.forEach((pid, i) => {
+    const st = soloStats[pid];
+    const soloStr = (st.won + st.lost) > 0
+      ? '  ' + '★'.repeat(st.won) + '☆'.repeat(st.lost)
+      : '';
+    lines.push(`${medals[i]}  ${padL(PL[pid].name, 12)} ${pad(p(totals[pid]), 5)} Pkt${soloStr}`);
+  });
+
+  // ── Kasse ──
+  lines.push('');
+  lines.push('━'.repeat(34));
+  lines.push('');
+  lines.push('💸  KASSE');
+  lines.push('');
+  PIDS.forEach(pid => {
+    const pay = payments[pid];
     const det = [];
     if (pay.scorePay > 0) det.push(`${pay.scorePay}€ Punkte`);
-    if (pay.soloExtra > 0) det.push('5€ Solopflicht');
-    const total = pay.total > 0 ? `zahlt ${pay.total}€` : 'zahlt nichts';
-    lines.push(`${PL[p].name.padEnd(12)} ${String(totals[p] > 0 ? '+' + totals[p] : totals[p]).padStart(5)} Pkt  →  ${total}${det.length ? '  (' + det.join(' + ') + ')' : ''}`);
+    if (pay.soloExtra > 0) det.push('5€ kein Solo');
+    const amtStr = pay.total > 0 ? `${pay.total} €` : '—';
+    const detStr = det.length ? `  (${det.join(' + ')})` : '';
+    lines.push(`    ${padL(PL[pid].name, 12)} ${pad(amtStr, 6)}${detStr}`);
   });
   lines.push('');
-  lines.push(`Topf: ${PIDS.reduce((s,p) => s + payments[p].total, 0)}€`);
+  lines.push(`    ${'─'.repeat(20)}`);
+  lines.push(`    ${'Gesamttopf'.padEnd(12)} ${totalPot} €`);
+
+  lines.push('');
+  lines.push('━'.repeat(34));
+  lines.push('🃏  Gute Nacht!');
+
   return lines.join('\n');
 }
 
