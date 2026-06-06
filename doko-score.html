@@ -45,7 +45,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,system-ui,sans-serif;backgroun
 /* ── WENDE ── */
 .wende-divider{display:grid;grid-template-columns:48px 1fr;align-items:center;padding:0 8px 0 0;background:var(--surface2)}
 .wende-line{height:1px;background:var(--primary);opacity:.35}
-.wende-label{grid-column:1;padding:3px 4px 3px 10px;font-size:9px;font-weight:700;color:var(--primary);text-transform:uppercase;letter-spacing:.08em;opacity:.7}
+.wende-label{grid-column:1;padding:3px 4px 3px 10px;font-size:9px;font-weight:700;color:var(--primary);text-transform:uppercase;letter-spacing:.08em;opacity:.7;white-space:nowrap}
 
 /* ── ROUND TABLE ── */
 .round-header{display:grid;grid-template-columns:48px repeat(4,1fr);background:var(--surface2);border-bottom:1px solid var(--sep);padding:6px 0}
@@ -396,7 +396,7 @@ function renderMain(app) {
     const rows = S.rounds.map((r, idx) => {
       const cum = cums[idx];
       const wendeDiv = (idx > 0 && r.dealerIndex === 0)
-        ? `<div class="wende-divider"><span class="wende-label">Wende</span><div class="wende-line"></div></div>`
+        ? `<div class="wende-divider"><span class="wende-label">Neue Runde</span><div class="wende-line"></div></div>`
         : '';
       return wendeDiv + `<div class="round-row ${r.bock ? 'bock' : ''}" onclick="rowTap(${idx})">
         <div class="round-meta">
@@ -407,7 +407,7 @@ function renderMain(app) {
           const v = cum[pid];
           const d = r.delta[pid];
           const vcls = v > 0 ? 'c-pos' : v < 0 ? 'c-neg' : 'c-zero';
-          const dcls = d > 0 ? 'c-pos' : d < 0 ? 'c-neg' : '';
+          const dcls = '';
           let badge = '';
           if (r.spieltyp === 'solo' && r.soloPlayer === pid) {
             badge = r.soloWon
@@ -620,7 +620,7 @@ function renderAddSheet() {
 
   // Preview
   let preview = null;
-  if (!isVergeben && form.basePoints > 0) {
+  if (!isVergeben) {
     if (isSolo && form.soloPlayer) {
       preview = calcDelta('solo', form.bock, [], form.basePoints, form.soloPlayer, form.soloWon);
     } else if (!isSolo && form.winners.length === 2) {
@@ -629,7 +629,7 @@ function renderAddSheet() {
   }
 
   const canConfirm = (isVergeben && form.vergebenPlayer !== null) || (
-    !isVergeben && form.basePoints > 0 &&
+    !isVergeben &&
     (isSolo ? form.soloPlayer !== null : form.winners.length === 2)
   );
 
