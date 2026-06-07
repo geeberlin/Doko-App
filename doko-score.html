@@ -411,7 +411,8 @@ function renderMain(app) {
 
     const rows = S.rounds.map((r, idx) => {
       const cum = cums[idx];
-      const wendeDiv = (idx > 0 && r.dealerIndex === 0)
+      const prevDealerIdx = idx > 0 ? S.rounds[idx - 1].dealerIndex : -1;
+      const wendeDiv = (idx > 0 && r.dealerIndex === 0 && prevDealerIdx !== 0)
         ? `<div class="wende-divider"><span class="wende-label">Neue Runde</span><div class="wende-line"></div></div>`
         : '';
       return wendeDiv + `<div class="round-row ${r.bock ? 'bock' : ''}" onclick="rowTap(${idx})">
