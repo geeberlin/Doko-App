@@ -612,7 +612,7 @@ function generateMail({totals, maxScore, payments}) {
   lines.push('');
   const header = `      ${PIDS.map(pid => pad(PL[pid].s, 7)).join('')}`;
   lines.push(header);
-  lines.push('    ' + '─'.repeat(29));
+  lines.push('');
 
   let wendeCount = 0;
   S.rounds.forEach((r, i) => {
@@ -626,13 +626,13 @@ function generateMail({totals, maxScore, payments}) {
     lines.push(`${sp}${scores}`);
   });
 
-  lines.push('    ' + '─'.repeat(29));
+  lines.push('');
   const totRow = PIDS.map(pid => pad(p(totals[pid]), 7)).join('');
   lines.push(`${'     '}${totRow}`);
 
   const spielStats = getSpielStats();
   const rankedByPay = [...PIDS].sort((a,b) => payments[b].total - payments[a].total);
-  const HR = '━'.repeat(34);
+  const HR = '';
 
   // ── Endstand ──
   lines.push('');
@@ -684,7 +684,7 @@ function generateMail({totals, maxScore, payments}) {
     lines.push(`    ${padL(PL[pid].name, 12)} ${pad(amtStr, 5)}${crown}`);
   });
   lines.push('');
-  lines.push(`    ${'─'.repeat(20)}`);
+  lines.push('');
   lines.push(`    ${'Gesamttopf'.padEnd(12)} ${totalPot} €`);
 
   lines.push('');
